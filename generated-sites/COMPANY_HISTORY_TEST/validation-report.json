@@ -1,0 +1,11 @@
+{
+  "passed": false,
+  "errors": [
+    "page.tsx missing data-section for content section: history",
+    "page.tsx missing data-section for content section: portfolio",
+    "index.html missing data-section for content section: history",
+    "index.html missing data-section for content section: portfolio"
+  ],
+  "warnings": [],
+  "checked_at": "2026-05-16T15:35:38.765Z"
+}

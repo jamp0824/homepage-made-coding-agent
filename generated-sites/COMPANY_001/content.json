@@ -1,0 +1,28 @@
+{
+  "request_id": "REQ_COMPANY_001",
+  "company_id": "COMPANY_001",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "company_name": "주식회사 샘플AI",
+  "hero_title": "중소기업을 위한 AI 재고관리 솔루션",
+  "one_line_intro": "중소기업을 위한 AI 재고관리 솔루션",
+  "company_intro": "AI 기반 재고관리 솔루션을 통해 입출고와 발주 업무를 효율화합니다.",
+  "business_summary": "IT·소프트웨어 분야에서 소프트웨어 개발 및 공급을 수행합니다.",
+  "core_strengths": [
+    "AI 기반 재고 예측",
+    "입출고 통합 관리",
+    "중소기업 맞춤형 사용성"
+  ],
+  "products": [],
+  "history": [],
+  "portfolio": [],
+  "product_registration_cta": "",
+  "contact_cta": "주식회사 샘플AI의 사업과 서비스가 궁금하시다면 문의해 주세요.",
+  "sections": [
+    "hero",
+    "company_intro",
+    "core_strengths",
+    "business_summary",
+    "contact_cta"
+  ]
+}

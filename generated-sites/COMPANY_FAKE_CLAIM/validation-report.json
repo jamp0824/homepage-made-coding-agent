@@ -1,0 +1,9 @@
+{
+  "passed": false,
+  "errors": [
+    "Unsupported high-risk phrase found: 업계 1위",
+    "Unsupported high-risk phrase found: 수상 경력"
+  ],
+  "warnings": [],
+  "checked_at": "2026-05-16T16:28:24.297Z"
+}

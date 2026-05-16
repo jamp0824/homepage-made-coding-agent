@@ -1,0 +1,21 @@
+{
+  "request_id": "REQ_HISTORY_001",
+  "company_id": "COMPANY_HISTORY_TEST",
+  "homepage_type": "company_intro",
+  "company_name": "히스토리테스트",
+  "industry": "IT·소프트웨어",
+  "business_type": "소프트웨어 개발",
+  "main_business_description": "테스트용 설명입니다. 충분히 긴 설명입니다.",
+  "history": [
+    {
+      "year": "2024",
+      "text": "서비스 출시"
+    }
+  ],
+  "portfolio": [
+    {
+      "title": "프로젝트A",
+      "description": "설명"
+    }
+  ]
+}

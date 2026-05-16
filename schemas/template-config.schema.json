@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/template-config.schema.json",
+  "title": "TemplateConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["template_id", "homepage_type", "required_sections"],
+  "properties": {
+    "template_id": { "type": "string" },
+    "homepage_type": { "type": "string", "enum": ["company_intro", "product"] },
+    "description": { "type": "string" },
+    "required_sections": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "optional_sections": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "forbidden_when_empty": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "asset_theme_defaults": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

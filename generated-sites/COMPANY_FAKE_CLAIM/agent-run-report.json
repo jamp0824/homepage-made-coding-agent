@@ -1,0 +1,76 @@
+{
+  "request_id": "REQ_FAKE_CLAIM_001",
+  "company_id": "COMPANY_FAKE_CLAIM",
+  "request_path": "harness/fixtures/fake-claim-request.json",
+  "generated_path": "generated-sites/COMPANY_FAKE_CLAIM",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "final_status": "manual_required",
+  "retry_count": 1,
+  "model_provider": "local_placeholder",
+  "model_name": "deterministic-template",
+  "validation_result": {
+    "passed": false,
+    "errors": [
+      "Unsupported high-risk phrase found: 업계 1위",
+      "Unsupported high-risk phrase found: 수상 경력"
+    ],
+    "warnings": []
+  },
+  "build_result": {
+    "passed": false,
+    "command": "npm run build",
+    "errors": [
+      "generated site validation failed"
+    ]
+  },
+  "error_type": "validation_failed",
+  "errors": [
+    "generated site validation failed"
+  ],
+  "timeline": [
+    {
+      "step": "requested",
+      "status": "completed",
+      "message": "Request file was accepted by the runner.",
+      "retry_count": 1,
+      "error_type": null
+    },
+    {
+      "step": "validating_request",
+      "status": "completed",
+      "message": "Request schema validation passed before generation.",
+      "retry_count": 1,
+      "error_type": null
+    },
+    {
+      "step": "agent_running",
+      "status": "completed",
+      "message": "Homepage files were generated under generated-sites/{company_id}.",
+      "retry_count": 1,
+      "error_type": null
+    },
+    {
+      "step": "validating_output",
+      "status": "failed",
+      "message": "Generated-site validation failed.",
+      "retry_count": 1,
+      "error_type": "validation_failed"
+    },
+    {
+      "step": "building",
+      "status": "failed",
+      "message": "Next.js build failed or was not completed.",
+      "retry_count": 1,
+      "error_type": "validation_failed"
+    },
+    {
+      "step": "manual_required",
+      "status": "failed",
+      "message": "Retry limit reached; automation failure was recorded.",
+      "retry_count": 1,
+      "error_type": "validation_failed"
+    }
+  ],
+  "completed_at": "2026-05-16T16:28:24.432Z"
+}

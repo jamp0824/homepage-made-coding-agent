@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/homepage-request.schema.json",
+  "title": "HomepageRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "company_id",
+    "homepage_type",
+    "company_name",
+    "industry",
+    "business_type",
+    "main_business_description"
+  ],
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1 },
+    "company_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "homepage_type": { "type": "string", "enum": ["company_intro", "product"] },
+    "company_name": { "type": "string", "minLength": 1 },
+    "industry": { "type": "string", "minLength": 1 },
+    "business_type": { "type": "string", "minLength": 1 },
+    "main_business_description": { "type": "string", "minLength": 10 },
+    "one_line_intro": { "type": "string" },
+    "company_intro": { "type": "string" },
+    "core_strengths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 10
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "image_url": { "type": "string" }
+        }
+      }
+    },
+    "portfolio": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["year", "text"],
+        "properties": {
+          "year": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "preferred_style": { "type": "string", "enum": ["clean", "modern", "basic", "professional"] },
+    "created_at": { "type": "string" }
+  }
+}

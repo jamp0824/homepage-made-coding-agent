@@ -1,0 +1,9 @@
+{
+  "request_id": "REQ_INVALID_002",
+  "company_id": "COMPANY_INVALID_002",
+  "homepage_type": "chat_builder",
+  "company_name": "주식회사 잘못된요청",
+  "industry": "IT·소프트웨어",
+  "business_type": "소프트웨어 개발 및 공급",
+  "main_business_description": "AI 기반 재고관리 솔루션을 개발하고 중소기업에 공급합니다."
+}

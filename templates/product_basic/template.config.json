@@ -1,0 +1,26 @@
+{
+  "template_id": "product_basic",
+  "homepage_type": "product",
+  "description": "상품 또는 서비스 홍보를 중심으로 구성하는 기본 홈페이지 템플릿",
+  "required_sections": [
+    "hero",
+    "company_intro",
+    "core_strengths",
+    "product_area_or_registration_cta",
+    "contact_cta"
+  ],
+  "optional_sections": [
+    "product_gallery",
+    "quotation_cta",
+    "business_summary"
+  ],
+  "forbidden_when_empty": [
+    "product_gallery"
+  ],
+  "asset_theme_defaults": {
+    "IT·소프트웨어": "it_software",
+    "제조업": "manufacturing",
+    "도소매업": "commerce",
+    "default": "business_general"
+  }
+}

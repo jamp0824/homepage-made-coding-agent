@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Next.js build outputs
+.next/
+.next-build/
+.next-build-test/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment files
+.env
+.env.*
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+
+# Harness runtime scratch files
+harness/tmp/

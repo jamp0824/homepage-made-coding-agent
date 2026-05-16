@@ -1,0 +1,5 @@
+{
+  "default_asset_theme": "business_general",
+  "fallback_hero_image": "/assets/default/product-hero.jpg",
+  "fallback_section_image": "/assets/default/product-section.jpg"
+}

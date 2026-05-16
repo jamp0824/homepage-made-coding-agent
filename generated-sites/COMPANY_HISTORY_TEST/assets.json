@@ -1,0 +1,9 @@
+{
+  "asset_theme": "it_software",
+  "hero_image": "it_software/hero-placeholder",
+  "section_images": {
+    "company_intro": "it_software/company-intro-placeholder",
+    "core_strengths": "it_software/strengths-placeholder"
+  },
+  "fallback_used": true
+}

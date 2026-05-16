@@ -1,0 +1,37 @@
+{
+  "request_id": "REQ_PRODUCT_ITEMS_001",
+  "company_id": "COMPANY_003",
+  "homepage_type": "product",
+  "template_id": "product_basic",
+  "company_name": "바른공구",
+  "hero_title": "현장에 필요한 산업용 공구를 공급합니다",
+  "one_line_intro": "현장에 필요한 산업용 공구를 공급합니다",
+  "company_intro": "전동공구와 작업 소모품을 유통하며 산업 현장의 원활한 작업 환경을 지원합니다.",
+  "business_summary": "도소매업 분야에서 산업용 공구 유통을 수행합니다.",
+  "core_strengths": [
+    "산업 현장 중심 제품 구성",
+    "전동공구와 소모품 통합 공급",
+    "작업 환경에 맞춘 제품 안내"
+  ],
+  "products": [
+    {
+      "name": "전동 드릴 세트",
+      "description": "작업 현장에서 사용할 수 있는 전동 드릴 구성입니다."
+    },
+    {
+      "name": "작업 장갑",
+      "description": "현장 작업을 위한 기본 보호 장갑입니다."
+    }
+  ],
+  "history": [],
+  "portfolio": [],
+  "product_registration_cta": "",
+  "contact_cta": "바른공구의 사업과 서비스가 궁금하시다면 문의해 주세요.",
+  "sections": [
+    "hero",
+    "company_intro",
+    "core_strengths",
+    "product_area",
+    "contact_cta"
+  ]
+}

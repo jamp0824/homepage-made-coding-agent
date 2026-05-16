@@ -1,0 +1,38 @@
+{
+  "request_id": "REQ_HISTORY_001",
+  "company_id": "COMPANY_HISTORY_TEST",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "company_name": "히스토리테스트",
+  "hero_title": "히스토리테스트",
+  "one_line_intro": "테스트용 설명입니다. 충분히 긴 설명입니다.",
+  "company_intro": "테스트용 설명입니다. 충분히 긴 설명입니다.",
+  "business_summary": "IT·소프트웨어 분야에서 소프트웨어 개발을 수행합니다.",
+  "core_strengths": [
+    "소프트웨어 개발 중심의 서비스 제공"
+  ],
+  "products": [],
+  "history": [
+    {
+      "year": "2024",
+      "text": "서비스 출시"
+    }
+  ],
+  "portfolio": [
+    {
+      "title": "프로젝트A",
+      "description": "설명"
+    }
+  ],
+  "product_registration_cta": "",
+  "contact_cta": "히스토리테스트의 사업과 서비스가 궁금하시다면 문의해 주세요.",
+  "sections": [
+    "hero",
+    "company_intro",
+    "core_strengths",
+    "business_summary",
+    "history",
+    "portfolio",
+    "contact_cta"
+  ]
+}

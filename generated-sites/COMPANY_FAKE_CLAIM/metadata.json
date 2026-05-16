@@ -1,0 +1,10 @@
+{
+  "request_id": "REQ_FAKE_CLAIM_001",
+  "company_id": "COMPANY_FAKE_CLAIM",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "generated_at": "2026-05-16T16:28:24.235Z",
+  "generator": "static-mvp-generator",
+  "model_provider": "local_placeholder",
+  "model_name": "deterministic-template"
+}

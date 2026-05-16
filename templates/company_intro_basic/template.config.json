@@ -1,0 +1,27 @@
+{
+  "template_id": "company_intro_basic",
+  "homepage_type": "company_intro",
+  "description": "회사 소개와 강점을 중심으로 구성하는 기본 홈페이지 템플릿",
+  "required_sections": [
+    "hero",
+    "company_intro",
+    "core_strengths",
+    "contact_cta"
+  ],
+  "optional_sections": [
+    "business_summary",
+    "history",
+    "portfolio",
+    "gallery"
+  ],
+  "forbidden_when_empty": [
+    "history",
+    "portfolio"
+  ],
+  "asset_theme_defaults": {
+    "IT·소프트웨어": "it_software",
+    "제조업": "manufacturing",
+    "도소매업": "commerce",
+    "default": "business_general"
+  }
+}

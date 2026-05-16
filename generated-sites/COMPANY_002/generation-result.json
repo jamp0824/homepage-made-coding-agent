@@ -1,0 +1,35 @@
+{
+  "request_id": "REQ_PRODUCT_EMPTY_001",
+  "company_id": "COMPANY_002",
+  "status": "generated",
+  "homepage_type": "product",
+  "template_id": "product_basic",
+  "generated_path": "generated-sites/COMPANY_002",
+  "homepage_url": "/homepage/COMPANY_002",
+  "model_provider": "local_placeholder",
+  "model_name": "deterministic-template",
+  "generated_files": [
+    "agent-run-report.json",
+    "agent-run-report.md",
+    "assets.json",
+    "content.json",
+    "generation-result.json",
+    "index.html",
+    "metadata.json",
+    "page.tsx",
+    "styles.css",
+    "validation-report.json"
+  ],
+  "build_result": {
+    "passed": true,
+    "command": "npm run build",
+    "errors": []
+  },
+  "validation_result": {
+    "passed": true,
+    "errors": [],
+    "warnings": []
+  },
+  "retry_count": 1,
+  "completed_at": "2026-05-16T16:27:47.227Z"
+}
