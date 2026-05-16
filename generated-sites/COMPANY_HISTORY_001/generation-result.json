@@ -1,7 +1,7 @@
 {
   "request_id": "REQ_COMPANY_HISTORY_001",
   "company_id": "COMPANY_HISTORY_001",
-  "status": "generated",
+  "status": "agent_failed",
   "homepage_type": "company_intro",
   "template_id": "company_intro_basic",
   "generated_path": "generated-sites/COMPANY_HISTORY_001",
@@ -9,27 +9,29 @@
   "model_provider": "local_placeholder",
   "model_name": "deterministic-template",
   "generated_files": [
-    "agent-run-report.json",
-    "agent-run-report.md",
-    "assets.json",
     "content.json",
-    "generation-result.json",
-    "index.html",
+    "assets.json",
     "metadata.json",
     "page.tsx",
+    "index.html",
     "styles.css",
-    "validation-report.json"
+    "generation-result.json",
+    "validation-report.json",
+    "agent-run-report.json",
+    "agent-run-report.md"
   ],
   "build_result": {
-    "passed": true,
+    "passed": false,
     "command": "npm run build",
     "errors": []
   },
   "validation_result": {
-    "passed": true,
-    "errors": [],
+    "passed": false,
+    "errors": [
+      "generation has not been validated yet"
+    ],
     "warnings": []
   },
-  "retry_count": 1,
-  "completed_at": "2026-05-16T16:28:42.678Z"
+  "retry_count": 0,
+  "completed_at": "2026-05-16T16:48:59.327Z"
 }

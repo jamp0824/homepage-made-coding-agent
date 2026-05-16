@@ -316,7 +316,11 @@ function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: "utf8",
-    env: options.env || process.env,
+    env: {
+      ...process.env,
+      GOOSE_MODE: process.env.GOOSE_MODE || "local",
+      ...(options.env || {}),
+    },
   });
 
   const failed = result.status !== 0;

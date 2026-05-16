@@ -54,6 +54,7 @@ Goose CLI 확인:
 
 ```bash
 npm run goose:check
+npm run goose:preflight
 ```
 
 실행 모드:
@@ -62,6 +63,20 @@ npm run goose:check
 GOOSE_MODE=auto bash scripts/run-homepage-builder.sh requests/sample-company-intro.json
 GOOSE_MODE=local bash scripts/run-homepage-builder.sh requests/sample-company-intro.json
 GOOSE_MODE=required bash scripts/run-homepage-builder.sh requests/sample-company-intro.json
+```
+
+`GOOSE_MODE=required`는 실제 Goose recipe만 사용합니다. 이 repo의 runner 모드 이름과 Goose CLI의 tool mode 환경변수 이름이 겹치므로, 실제 Goose 호출은 `scripts/run-goose-homepage-recipe.sh`가 담당합니다. Goose 내부 tool mode는 기본 `auto`이며 필요하면 `GOOSE_TOOL_MODE`로 바꿀 수 있습니다.
+
+Goose provider/model 설정이 없으면 preflight에서 멈춥니다.
+
+```bash
+goose configure
+```
+
+또는 실행 시 환경변수로 지정합니다.
+
+```bash
+GOOSE_PROVIDER=openai GOOSE_MODEL=gpt-4.1 GOOSE_MODE=required bash scripts/run-homepage-builder.sh requests/sample-company-intro.json
 ```
 
 `npm run build`는 Next.js production build를 실행합니다. dev server와 build가 서로 `.next` 파일을 덮어쓰지 않도록 production build는 `.next-build/`를 사용합니다. 패키지를 설치하지 않은 초기 환경에서는 먼저 `npm install`이 필요합니다.

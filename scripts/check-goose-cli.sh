@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export PATH="$HOME/.local/bin:$PATH"
+
+if [ -z "${GOOSE_PATH_ROOT:-}" ]; then
+  export GOOSE_PATH_ROOT="$PWD/harness/tmp/goose-check"
+fi
+
 if ! command -v goose >/dev/null 2>&1; then
   echo "goose command not found"
   echo

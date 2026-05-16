@@ -3,7 +3,7 @@
   "company_id": "COMPANY_002",
   "homepage_type": "product",
   "template_id": "product_basic",
-  "generated_at": "2026-05-16T16:27:28.828Z",
+  "generated_at": "2026-05-16T16:47:56.744Z",
   "generator": "static-mvp-generator",
   "model_provider": "local_placeholder",
   "model_name": "deterministic-template"

@@ -39,10 +39,8 @@ while [ "$attempt" -lt "$MAX_RETRY" ]; do
   attempt=$((attempt + 1))
   echo "Homepage builder attempt $attempt/$MAX_RETRY for $REQUEST_PATH"
 
-  if [[ "$GOOSE_MODE" != "local" ]] && command -v goose >/dev/null 2>&1; then
-    # Exact CLI flags can vary by Goose version. If this command fails,
-    # run `goose run --help` and adapt the parameter passing format.
-    if ! goose run --recipe recipes/homepage-builder.recipe.yaml --params "request_path=$REQUEST_PATH"; then
+  if [[ "$GOOSE_MODE" != "local" ]] && PATH="$HOME/.local/bin:$PATH" command -v goose >/dev/null 2>&1; then
+    if ! bash scripts/run-goose-homepage-recipe.sh "$REQUEST_PATH"; then
       LAST_ERROR_TYPE="agent_failed"
       LAST_ERROR_MESSAGE="goose recipe failed"
       continue
