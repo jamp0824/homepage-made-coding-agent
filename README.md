@@ -79,7 +79,7 @@ goose configure
 GOOSE_PROVIDER=openai GOOSE_MODEL=gpt-4.1 GOOSE_MODE=required bash scripts/run-homepage-builder.sh requests/sample-company-intro.json
 ```
 
-`npm run build`는 Next.js production build를 실행합니다. dev server와 build가 서로 `.next` 파일을 덮어쓰지 않도록 production build는 `.next-build/`를 사용합니다. 패키지를 설치하지 않은 초기 환경에서는 먼저 `npm install`이 필요합니다.
+`npm run build`는 Next.js production build를 실행합니다. dev server와 build가 서로 `.next` 파일을 덮어쓰지 않도록 production build는 `.next-build/`를 사용합니다. build wrapper는 `.next-build.lock`으로 동시 실행을 막고, 중단된 빌드가 남긴 오래된 lock은 기본 10분 뒤 stale로 판단해 자동 복구합니다. 필요하면 `NEXT_BUILD_LOCK_STALE_MS`로 조정할 수 있습니다. build 자체도 기본 10분 timeout을 두며 `NEXT_BUILD_TIMEOUT_MS`로 조정 가능합니다. 패키지를 설치하지 않은 초기 환경에서는 먼저 `npm install`이 필요합니다.
 
 생성된 홈페이지는 현재 정적 HTML 결과물로 바로 확인할 수 있습니다.
 

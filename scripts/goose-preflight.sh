@@ -31,13 +31,13 @@ has_provider_config() {
     return 0
   fi
 
-  local config_candidates=(
-    "$HOME/.config/goose/config.yaml"
-    "$HOME/Library/Application Support/Block/goose/config/config.yaml"
-  )
-
   if [ -n "${GOOSE_PATH_ROOT:-}" ]; then
-    config_candidates+=("$GOOSE_PATH_ROOT/config/config.yaml")
+    local config_candidates=("$GOOSE_PATH_ROOT/config/config.yaml")
+  else
+    local config_candidates=(
+      "$HOME/.config/goose/config.yaml"
+      "$HOME/Library/Application Support/Block/goose/config/config.yaml"
+    )
   fi
 
   local config_path

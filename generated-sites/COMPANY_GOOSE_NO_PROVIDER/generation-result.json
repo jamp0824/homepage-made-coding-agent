@@ -1,0 +1,32 @@
+{
+  "request_id": "REQ_GOOSE_NO_PROVIDER",
+  "company_id": "COMPANY_GOOSE_NO_PROVIDER",
+  "status": "manual_required",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "generated_path": "generated-sites/COMPANY_GOOSE_NO_PROVIDER",
+  "homepage_url": "/homepage/COMPANY_GOOSE_NO_PROVIDER",
+  "model_provider": "local_placeholder",
+  "model_name": "deterministic-template",
+  "generated_files": [],
+  "build_result": {
+    "passed": false,
+    "command": "npm run build",
+    "errors": [
+      "goose recipe failed"
+    ]
+  },
+  "validation_result": {
+    "passed": false,
+    "errors": [
+      "agent failed before generated-site validation: goose recipe failed"
+    ],
+    "warnings": []
+  },
+  "retry_count": 1,
+  "completed_at": "2026-05-16T17:11:43.910Z",
+  "error_type": "agent_failed",
+  "errors": [
+    "goose recipe failed"
+  ]
+}

@@ -1,8 +1,8 @@
 {
-  "request_id": "REQ_FAKE_CLAIM_001",
-  "company_id": "COMPANY_FAKE_CLAIM",
-  "request_path": "harness/fixtures/fake-claim-request.json",
-  "generated_path": "generated-sites/COMPANY_FAKE_CLAIM",
+  "request_id": "REQ_GOOSE_NO_PROVIDER",
+  "company_id": "COMPANY_GOOSE_NO_PROVIDER",
+  "request_path": "/Users/junonan/Downloads/goose-homepage-builder-harness/harness/tmp/goose-no-provider/request.json",
+  "generated_path": "generated-sites/COMPANY_GOOSE_NO_PROVIDER",
   "homepage_type": "company_intro",
   "template_id": "company_intro_basic",
   "final_status": "manual_required",
@@ -12,8 +12,7 @@
   "validation_result": {
     "passed": false,
     "errors": [
-      "Unsupported high-risk phrase found: 업계 1위",
-      "Unsupported high-risk phrase found: 수상 경력"
+      "agent failed before generated-site validation: goose recipe failed"
     ],
     "warnings": []
   },
@@ -21,12 +20,12 @@
     "passed": false,
     "command": "npm run build",
     "errors": [
-      "generated site validation failed"
+      "goose recipe failed"
     ]
   },
-  "error_type": "validation_failed",
+  "error_type": "agent_failed",
   "errors": [
-    "generated site validation failed"
+    "goose recipe failed"
   ],
   "timeline": [
     {
@@ -45,32 +44,32 @@
     },
     {
       "step": "agent_running",
-      "status": "completed",
-      "message": "Homepage files were generated under generated-sites/{company_id}.",
+      "status": "failed",
+      "message": "Homepage agent failed before generated-site validation completed.",
+      "retry_count": 1,
+      "error_type": "agent_failed"
+    },
+    {
+      "step": "validating_output",
+      "status": "skipped",
+      "message": "Generated-site validation skipped because the agent failed.",
       "retry_count": 1,
       "error_type": null
     },
     {
-      "step": "validating_output",
-      "status": "failed",
-      "message": "Generated-site validation failed.",
-      "retry_count": 1,
-      "error_type": "validation_failed"
-    },
-    {
       "step": "building",
-      "status": "failed",
-      "message": "Next.js build failed or was not completed.",
+      "status": "skipped",
+      "message": "Build skipped because automation failed before build.",
       "retry_count": 1,
-      "error_type": "validation_failed"
+      "error_type": null
     },
     {
       "step": "manual_required",
       "status": "failed",
       "message": "Retry limit reached; automation failure was recorded.",
       "retry_count": 1,
-      "error_type": "validation_failed"
+      "error_type": "agent_failed"
     }
   ],
-  "completed_at": "2026-05-16T17:10:59.670Z"
+  "completed_at": "2026-05-16T17:11:43.910Z"
 }

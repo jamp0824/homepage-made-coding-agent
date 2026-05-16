@@ -289,6 +289,61 @@ runTest("job creator writes valid pending request and prevents overwrite", () =>
   ]);
 });
 
+runTest("goose required without provider records agent failure without stale validation", () => {
+  if (!hasGooseCli()) {
+    console.log("skip - goose CLI is not installed");
+    return;
+  }
+
+  const request = readJson("requests/sample-company-intro.json");
+  request.request_id = "REQ_GOOSE_NO_PROVIDER";
+  request.company_id = "COMPANY_GOOSE_NO_PROVIDER";
+
+  const requestDir = path.join(process.cwd(), "harness", "tmp", "goose-no-provider");
+  const requestPath = path.join(requestDir, "request.json");
+  const sitePath = path.join(process.cwd(), "generated-sites", request.company_id);
+  const goosePathRoot = path.join(requestDir, "goose-runtime");
+
+  fs.rmSync(requestDir, { force: true, recursive: true });
+  fs.rmSync(sitePath, { force: true, recursive: true });
+  fs.mkdirSync(requestDir, { recursive: true });
+  fs.writeFileSync(requestPath, JSON.stringify(request, null, 2));
+
+  run("bash", ["scripts/run-homepage-builder.sh", requestPath], {
+    expectFailure: true,
+    env: {
+      ...process.env,
+      GOOSE_MODE: "required",
+      MAX_RETRY: "1",
+      GOOSE_PATH_ROOT: goosePathRoot,
+      GOOSE_PROVIDER: "",
+      GOOSE_MODEL: "",
+    },
+  });
+
+  assertResult("generated-sites/COMPANY_GOOSE_NO_PROVIDER/generation-result.json", {
+    status: "manual_required",
+    buildPassed: false,
+    validationPassed: false,
+  });
+
+  const result = readJson("generated-sites/COMPANY_GOOSE_NO_PROVIDER/generation-result.json");
+  const runReport = readJson("generated-sites/COMPANY_GOOSE_NO_PROVIDER/agent-run-report.json");
+
+  assert(
+    result.validation_result.errors.some((error) =>
+      error.includes("agent failed before generated-site validation"),
+    ),
+    "goose preflight failure must not reuse stale validation success",
+  );
+  assert(
+    runReport.timeline.some(
+      (event) => event.step === "validating_output" && event.status === "skipped",
+    ),
+    "goose preflight failure must mark generated-site validation as skipped",
+  );
+});
+
 let failed = 0;
 for (const test of tests) {
   try {
@@ -345,6 +400,15 @@ function run(command, args, options = {}) {
 
 function runExpectFailure(command, args) {
   run(command, args, { expectFailure: true });
+}
+
+function hasGooseCli() {
+  const result = spawnSync("bash", ["-lc", 'PATH="$HOME/.local/bin:$PATH" command -v goose'], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+
+  return result.status === 0;
 }
 
 function assertResult(resultPath, expected) {

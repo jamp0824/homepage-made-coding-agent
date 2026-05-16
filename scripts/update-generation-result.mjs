@@ -23,9 +23,19 @@ const agentRunReportMdPath = path.join(sitePath, "agent-run-report.md");
 const existing = fs.existsSync(resultPath)
   ? JSON.parse(fs.readFileSync(resultPath, "utf8"))
   : {};
-const report = fs.existsSync(reportPath)
-  ? JSON.parse(fs.readFileSync(reportPath, "utf8"))
-  : { passed: false, errors: ["validation-report.json not found"], warnings: [] };
+const validationOverride =
+  args.validation_passed === "true" ||
+  args.validation_passed === "false" ||
+  Boolean(args.validation_errors || args.validation_warnings);
+const report = validationOverride
+  ? {
+      passed: args.validation_passed === "true",
+      errors: parseList(args.validation_errors),
+      warnings: parseList(args.validation_warnings),
+    }
+  : fs.existsSync(reportPath)
+    ? JSON.parse(fs.readFileSync(reportPath, "utf8"))
+    : { passed: false, errors: ["validation-report.json not found"], warnings: [] };
 const buildErrors = args.build_errors ? [args.build_errors] : [];
 const generatedFiles = fs.existsSync(sitePath)
   ? fs.readdirSync(sitePath).filter((fileName) => !fileName.startsWith(".")).sort()
@@ -86,6 +96,9 @@ const agentRunReport = {
 };
 
 fs.mkdirSync(sitePath, { recursive: true });
+if (validationOverride) {
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+}
 fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 fs.writeFileSync(agentRunReportJsonPath, JSON.stringify(agentRunReport, null, 2));
 fs.writeFileSync(agentRunReportMdPath, renderMarkdownReport(agentRunReport));
@@ -103,6 +116,14 @@ function parseArgs(rawArgs) {
   return parsed;
 }
 
+function parseList(value) {
+  if (!value) return [];
+  return String(value)
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function assertGeneratedSitePath(rawSitePath) {
   const absoluteRoot = path.resolve("generated-sites");
   const absoluteSitePath = path.resolve(rawSitePath);
@@ -118,6 +139,7 @@ function assertGeneratedSitePath(rawSitePath) {
 }
 
 function buildTimeline({ status, retryCount, validationPassed, buildPassed, errorType }) {
+  const agentFailed = errorType === "agent_failed";
   const timeline = [
     {
       step: "requested",
@@ -131,23 +153,31 @@ function buildTimeline({ status, retryCount, validationPassed, buildPassed, erro
     },
     {
       step: "agent_running",
-      status: "completed",
-      message: "Homepage files were generated under generated-sites/{company_id}.",
+      status: agentFailed ? "failed" : "completed",
+      message: agentFailed
+        ? "Homepage agent failed before generated-site validation completed."
+        : "Homepage files were generated under generated-sites/{company_id}.",
     },
     {
       step: "validating_output",
-      status: validationPassed ? "completed" : "failed",
-      message: validationPassed
-        ? "Generated-site validation passed."
-        : "Generated-site validation failed.",
+      status: agentFailed ? "skipped" : validationPassed ? "completed" : "failed",
+      message: agentFailed
+        ? "Generated-site validation skipped because the agent failed."
+        : validationPassed
+          ? "Generated-site validation passed."
+          : "Generated-site validation failed.",
     },
     {
       step: "building",
-      status: buildPassed ? "completed" : status === "validation_failed" ? "skipped" : "failed",
+      status: buildPassed
+        ? "completed"
+        : status === "validation_failed" || agentFailed
+          ? "skipped"
+          : "failed",
       message: buildPassed
         ? "Next.js build passed."
-        : status === "validation_failed"
-          ? "Build skipped because validation failed."
+        : status === "validation_failed" || agentFailed
+          ? "Build skipped because automation failed before build."
           : "Next.js build failed or was not completed.",
     },
     {

@@ -8,6 +8,8 @@ GOOSE_MODE="${GOOSE_MODE:-auto}"
 LAST_ERROR_TYPE="agent_failed"
 LAST_ERROR_MESSAGE="generation did not complete"
 
+export PATH="$HOME/.local/bin:$PATH"
+
 run_build_with_lock() {
   npm run build
 }
@@ -39,7 +41,7 @@ while [ "$attempt" -lt "$MAX_RETRY" ]; do
   attempt=$((attempt + 1))
   echo "Homepage builder attempt $attempt/$MAX_RETRY for $REQUEST_PATH"
 
-  if [[ "$GOOSE_MODE" != "local" ]] && PATH="$HOME/.local/bin:$PATH" command -v goose >/dev/null 2>&1; then
+  if [[ "$GOOSE_MODE" != "local" ]] && command -v goose >/dev/null 2>&1; then
     if ! bash scripts/run-goose-homepage-recipe.sh "$REQUEST_PATH"; then
       LAST_ERROR_TYPE="agent_failed"
       LAST_ERROR_MESSAGE="goose recipe failed"
@@ -112,6 +114,8 @@ node scripts/update-generation-result.mjs \
   --build-errors "$LAST_ERROR_MESSAGE" \
   --retry-count "$MAX_RETRY" \
   --error-type "$LAST_ERROR_TYPE" \
-  --errors "$LAST_ERROR_MESSAGE" >/dev/null
+  --errors "$LAST_ERROR_MESSAGE" \
+  --validation-passed "$([[ "$LAST_ERROR_TYPE" == "agent_failed" ]] && echo "false" || echo "")" \
+  --validation-errors "$([[ "$LAST_ERROR_TYPE" == "agent_failed" ]] && echo "agent failed before generated-site validation: $LAST_ERROR_MESSAGE" || echo "")" >/dev/null
 echo "Homepage generation failed after $MAX_RETRY attempts: $SITE_PATH"
 exit 1

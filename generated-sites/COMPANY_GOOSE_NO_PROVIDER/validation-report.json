@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "errors": [
+    "agent failed before generated-site validation: goose recipe failed"
+  ],
+  "warnings": []
+}
