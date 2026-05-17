@@ -61,10 +61,13 @@ When available, use the existing scripts rather than inventing a new flow:
 
 ```bash
 node scripts/validate-request.mjs {{ request_path }}
-bash scripts/run-homepage-builder.sh {{ request_path }}
+HOMEPAGE_GENERATOR_PROVIDER=goose_agent HOMEPAGE_GENERATOR_MODEL="${GOOSE_MODEL:-configured-goose-model}" node scripts/generate-static-site.mjs {{ request_path }}
 bash scripts/validate-generated-site.sh generated-sites/{company_id} {{ request_path }}
 npm run build
 ```
+
+Do not run `scripts/run-homepage-builder.sh` from inside Goose. The outer runner already invoked
+Goose and owns retry, final status updates, and build validation.
 
 If you directly edit generated output, rerun the validation/build commands before finishing.
 

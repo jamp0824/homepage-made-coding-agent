@@ -114,8 +114,8 @@ const metadata = {
   template_id: templateId,
   generated_at: new Date().toISOString(),
   generator: "static-mvp-generator",
-  model_provider: "local_placeholder",
-  model_name: "deterministic-template",
+  model_provider: process.env.HOMEPAGE_GENERATOR_PROVIDER || "local_placeholder",
+  model_name: process.env.HOMEPAGE_GENERATOR_MODEL || "deterministic-template",
 };
 
 const pageSource = `// Generated from ${templateId}. Do not edit outside generated-sites/{company_id}.

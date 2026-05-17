@@ -26,6 +26,14 @@ export default function HomePage() {
           상태 목록 JSON은 <code>/api/generated-sites</code> 와 <code>/api/jobs</code> 에서
           조회할 수 있습니다.
         </p>
+        <div className="hero-actions">
+          <Link className="primary-link" href="/test-builder">
+            테스트 입력으로 생성하기
+          </Link>
+          <Link className="secondary-link" href="/reference-flow">
+            입력 플로우 참고 화면
+          </Link>
+        </div>
       </section>
 
       <section className="status-strip" aria-label="작업 큐 요약">

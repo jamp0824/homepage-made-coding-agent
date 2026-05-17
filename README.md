@@ -86,6 +86,17 @@ Provider 설정이 끝난 뒤에는 아래 한 명령으로 Goose-only end-to-en
 npm run goose:e2e -- requests/sample-company-intro.json
 ```
 
+E2E 실행 증거는 생성 사이트 결과와 분리해 아래에 남깁니다.
+
+```text
+reports/e2e/latest.json
+reports/e2e/latest.md
+reports/e2e/{timestamp}-{request_id}.json
+reports/e2e/{timestamp}-{request_id}.md
+```
+
+보고서에는 provider/model, 실행 시간, 최종 상태, validation/build 결과만 기록하며 API key나 OAuth token은 저장하지 않습니다.
+
 `npm run build`는 Next.js production build를 실행합니다. dev server와 build가 서로 `.next` 파일을 덮어쓰지 않도록 production build는 `.next-build/`를 사용합니다. build wrapper는 `.next-build.lock`으로 동시 실행을 막고, 중단된 빌드가 남긴 오래된 lock은 기본 10분 뒤 stale로 판단해 자동 복구합니다. 필요하면 `NEXT_BUILD_LOCK_STALE_MS`로 조정할 수 있습니다. build 자체도 기본 10분 timeout을 두며 `NEXT_BUILD_TIMEOUT_MS`로 조정 가능합니다. 패키지를 설치하지 않은 초기 환경에서는 먼저 `npm install`이 필요합니다.
 
 생성된 홈페이지는 현재 정적 HTML 결과물로 바로 확인할 수 있습니다.

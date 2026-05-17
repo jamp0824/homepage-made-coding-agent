@@ -49,6 +49,7 @@ process.on("SIGTERM", () => {
 const result = spawnSync(nextBin, ["build", frontendDir], {
   env: {
     ...process.env,
+    NODE_ENV: "production",
     NEXT_DIST_DIR: ".next-build",
     NEXT_TELEMETRY_DISABLED: process.env.NEXT_TELEMETRY_DISABLED || "1",
   },

@@ -79,16 +79,19 @@ prompt: |
      - Do not add awards, certifications, customer names, revenue, rankings, patents, delivery records, years of experience, or unsupported metrics.
      - Avoid high-risk phrases listed in harness/validation-rules.md unless directly supported by request data.
 
-  9. Validate generated output:
+  9. Generate the site by using the constrained local template generator. Do not run
+     scripts/run-homepage-builder.sh from inside Goose; the outer runner owns retry,
+     final status updates, and build validation.
+
+     HOMEPAGE_GENERATOR_PROVIDER=goose_agent \
+     HOMEPAGE_GENERATOR_MODEL="${GOOSE_MODEL:-configured-goose-model}" \
+     node scripts/generate-static-site.mjs {{ request_path }}
+
+  10. Validate generated output:
 
      bash scripts/validate-generated-site.sh generated-sites/{company_id} {{ request_path }}
 
-  10. Run build:
-
-      npm run build
-
-  11. Final result:
-      - If validation/build pass, generation-result.json must contain status=generated, validation_result.passed=true, build_result.passed=true.
-      - If validation/build fail after retry, generation-result.json must contain status=manual_required and clear errors.
+  11. Confirm the required generated files exist. The outer runner will run
+      npm run build and write the final generation-result.json status.
 
   Prefer using existing scripts and templates over writing a separate ad-hoc generator. The local harness is the source of truth.

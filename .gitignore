@@ -26,3 +26,7 @@ Thumbs.db
 
 # Harness runtime scratch files
 harness/tmp/
+
+# Generated runtime/test outputs
+generated-sites/UI_*/
+generated-sites/COMPANY_GOOSE_MISSING_CLI*/

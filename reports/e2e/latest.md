@@ -1,0 +1,32 @@
+# Goose E2E Report
+
+## Summary
+
+- request_id: REQ_COMPANY_001
+- company_id: COMPANY_001
+- request_path: requests/sample-company-intro.json
+- generated_site_path: generated-sites/COMPANY_001
+- preview_url: /homepage/COMPANY_001
+- final_status: generated
+- exit_code: 0
+
+## Runtime
+
+- goose_version: 1.34.1
+- model_provider: google
+- model_name: gemini-2.5-flash
+- started_at: 2026-05-17T00:00:00Z
+- ended_at: 2026-05-17T00:00:03Z
+- duration_ms: 3000
+- quota_or_rate_limit_warning: true
+
+## Checks
+
+- validation_passed: true
+- build_passed: true
+- retry_count: 1
+
+## Archive
+
+- report_path: reports/e2e/2026-05-17T00-00-03-000Z-REQ_COMPANY_001.json
+

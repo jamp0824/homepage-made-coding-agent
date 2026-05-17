@@ -344,6 +344,45 @@ runTest("goose required without provider records agent failure without stale val
   );
 });
 
+runTest("goose required without CLI records manual_required", () => {
+  const request = readJson("requests/sample-company-intro.json");
+  request.request_id = "REQ_GOOSE_MISSING_CLI";
+  request.company_id = "COMPANY_GOOSE_MISSING_CLI";
+
+  const requestDir = path.join(process.cwd(), "harness", "tmp", "goose-missing-cli");
+  const requestPath = path.join(requestDir, "request.json");
+  const sitePath = path.join(process.cwd(), "generated-sites", request.company_id);
+  const fakeHome = path.join(requestDir, "home");
+
+  fs.rmSync(requestDir, { force: true, recursive: true });
+  fs.rmSync(sitePath, { force: true, recursive: true });
+  fs.mkdirSync(fakeHome, { recursive: true });
+  fs.writeFileSync(requestPath, JSON.stringify(request, null, 2));
+
+  run("bash", ["scripts/run-homepage-builder.sh", requestPath], {
+    expectFailure: true,
+    env: {
+      ...process.env,
+      GOOSE_MODE: "required",
+      HOME: fakeHome,
+      MAX_RETRY: "1",
+      PATH: `${path.dirname(process.execPath)}:/usr/bin:/bin:/usr/sbin:/sbin`,
+    },
+  });
+
+  assertResult("generated-sites/COMPANY_GOOSE_MISSING_CLI/generation-result.json", {
+    status: "manual_required",
+    buildPassed: false,
+    validationPassed: false,
+  });
+
+  const result = readJson("generated-sites/COMPANY_GOOSE_MISSING_CLI/generation-result.json");
+  assert(
+    result.errors.some((error) => error.includes("goose command was not found")),
+    "missing Goose CLI must be recorded in generation-result errors",
+  );
+});
+
 let failed = 0;
 for (const test of tests) {
   try {
