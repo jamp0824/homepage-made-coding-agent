@@ -60,6 +60,12 @@ Or pass provider/model env vars explicitly:
 GOOSE_PROVIDER=openai GOOSE_MODEL=gpt-4.1 GOOSE_MODE=required bash scripts/run-homepage-builder.sh requests/sample-company-intro.json
 ```
 
+Once provider configuration is complete, use the Goose-only E2E wrapper:
+
+```bash
+npm run goose:e2e -- requests/sample-company-intro.json
+```
+
 Force local deterministic generation:
 
 ```bash
