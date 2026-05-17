@@ -5,6 +5,8 @@ REQUEST_PATH="${1:-requests/sample-company-intro.json}"
 
 export PATH="$HOME/.local/bin:$PATH"
 
+source scripts/ensure-goose-runtime.sh
+
 if [ ! -f "$REQUEST_PATH" ]; then
   echo "Request file not found: $REQUEST_PATH"
   exit 1

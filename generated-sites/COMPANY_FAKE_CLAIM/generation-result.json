@@ -36,7 +36,7 @@
     "warnings": []
   },
   "retry_count": 1,
-  "completed_at": "2026-05-17T05:24:05.526Z",
+  "completed_at": "2026-05-17T06:31:50.553Z",
   "error_type": "validation_failed",
   "errors": [
     "generated site validation failed"

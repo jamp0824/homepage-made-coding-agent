@@ -6,6 +6,8 @@ RECIPE_PATH="${GOOSE_RECIPE_PATH:-recipes/homepage-builder.recipe.yaml}"
 
 export PATH="$HOME/.local/bin:$PATH"
 
+source scripts/ensure-goose-runtime.sh
+
 has_global_provider_config() {
   local config_candidates=(
     "$HOME/.config/goose/config.yaml"

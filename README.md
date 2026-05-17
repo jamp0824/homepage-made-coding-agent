@@ -26,6 +26,7 @@
 
 - `PRD.md`: 전체 제품 요구사항
 - `AGENTS.md`: Codex 프로젝트 지침
+- `frontend/`: 생성 결과 미리보기와 `docs/pics` 레퍼런스 재현용 Next.js 화면
 - `docs/04_role_task_harness.md`: 역할별 Harness 태스크
 - `prompts/codex_master_prompt.md`: Codex 첫 실행 지시문
 - `prompts/goose_homepage_builder.md`: Goose Agent 실행 프롬프트
@@ -103,6 +104,12 @@ npm run dev
 http://localhost:3000/homepage/COMPANY_001
 http://localhost:3000/homepage/COMPANY_002
 http://localhost:3000/homepage/COMPANY_003
+```
+
+`docs/pics`의 입력 STEP 화면을 확인하는 테스트 전용 route도 분리되어 있습니다.
+
+```text
+http://localhost:3000/reference-flow
 ```
 
 각 회사 디렉토리에는 React/Next 통합을 위한 `page.tsx`와, 즉시 브라우저 확인이 가능한 `index.html`/`styles.css`가 함께 생성됩니다.

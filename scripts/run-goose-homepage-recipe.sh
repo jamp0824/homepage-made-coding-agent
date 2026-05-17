@@ -8,6 +8,8 @@ GOOSE_TOOL_MODE="${GOOSE_TOOL_MODE:-auto}"
 
 export PATH="$HOME/.local/bin:$PATH"
 
+source scripts/ensure-goose-runtime.sh
+
 has_global_provider_config() {
   local config_candidates=(
     "$HOME/.config/goose/config.yaml"

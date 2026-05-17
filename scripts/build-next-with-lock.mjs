@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 const lockDir = path.join(process.cwd(), ".next-build.lock");
 const lockMetadataPath = path.join(lockDir, "metadata.json");
 const nextBin = path.join(process.cwd(), "node_modules", ".bin", "next");
+const frontendDir = path.join(process.cwd(), "frontend");
 const waitIntervalMs = readPositiveNumber(process.env.NEXT_BUILD_LOCK_WAIT_MS, 1000);
 const staleAfterMs = readPositiveNumber(process.env.NEXT_BUILD_LOCK_STALE_MS, 10 * 60 * 1000);
 const buildTimeoutMs = readPositiveNumber(process.env.NEXT_BUILD_TIMEOUT_MS, 10 * 60 * 1000);
@@ -45,7 +46,7 @@ process.on("SIGTERM", () => {
   process.exit(143);
 });
 
-const result = spawnSync(nextBin, ["build"], {
+const result = spawnSync(nextBin, ["build", frontendDir], {
   env: {
     ...process.env,
     NEXT_DIST_DIR: ".next-build",
@@ -81,19 +82,15 @@ function writeLockMetadata() {
 
 function isStaleLock() {
   const metadata = readLockMetadata();
+  if (metadata?.pid) {
+    return !isProcessAlive(metadata.pid);
+  }
+
   const now = Date.now();
   const startedAt = metadata?.started_at ? Date.parse(metadata.started_at) : Number.NaN;
   const lockAgeMs = Number.isFinite(startedAt) ? now - startedAt : getLockDirectoryAgeMs(now);
 
-  if (lockAgeMs < staleAfterMs) {
-    return false;
-  }
-
-  if (!metadata?.pid) {
-    return true;
-  }
-
-  return !isProcessAlive(metadata.pid);
+  return lockAgeMs >= staleAfterMs;
 }
 
 function readLockMetadata() {

@@ -5,6 +5,8 @@ node_modules/
 .next/
 .next-build/
 .next-build-test/
+frontend/.next/
+frontend/.next-build/
 out/
 
 # Logs

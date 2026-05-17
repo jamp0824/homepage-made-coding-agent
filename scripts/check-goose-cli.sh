@@ -7,6 +7,8 @@ if [ -z "${GOOSE_PATH_ROOT:-}" ]; then
   export GOOSE_PATH_ROOT="$PWD/harness/tmp/goose-check"
 fi
 
+source scripts/ensure-goose-runtime.sh
+
 if ! command -v goose >/dev/null 2>&1; then
   echo "goose command not found"
   echo

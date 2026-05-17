@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev frontend",
     "build": "node scripts/build-next-with-lock.mjs",
     "build:placeholder": "node scripts/build-placeholder.mjs",
-    "start": "NEXT_DIST_DIR=.next-build next start",
+    "start": "NEXT_DIST_DIR=.next-build next start frontend",
     "goose:check": "bash scripts/check-goose-cli.sh",
     "goose:preflight": "bash scripts/goose-preflight.sh",
     "goose:e2e": "bash scripts/run-goose-e2e.sh",
