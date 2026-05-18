@@ -113,6 +113,12 @@ if (content && metadata) {
   }
   if (!content.homepage_type) errors.push("content.json missing homepage_type");
   if (!content.template_id) errors.push("content.json missing template_id");
+  if ("template_variant" in content && typeof content.template_variant !== "string") {
+    errors.push("content.json template_variant must be a string when present");
+  }
+  if ("template_variant" in metadata && typeof metadata.template_variant !== "string") {
+    errors.push("metadata.json template_variant must be a string when present");
+  }
 
   const expectedTemplate =
     content.homepage_type === "company_intro"
@@ -154,41 +160,92 @@ if (content && metadata) {
     if (content.company_name !== request.company_name) {
       errors.push("company_name must match request.company_name exactly");
     }
+    validateRequestBoundTags({ content, request, errors });
+    validateRequestBoundContact({ content, request, errors });
+    validateRequestBoundCoverImage({ content, assets, request, errors });
     if ((!Array.isArray(request.history) || request.history.length === 0) && hasSection(content, "history")) {
       errors.push("history section generated even though request.history is empty");
     }
     if ((!Array.isArray(request.portfolio) || request.portfolio.length === 0) && hasSection(content, "portfolio")) {
       errors.push("portfolio section generated even though request.portfolio is empty");
     }
+    if (Array.isArray(request.products) && request.products.length > 0 && !Array.isArray(content.products)) {
+      errors.push("request.products was provided but content.products is not an array");
+    }
     if (Array.isArray(content.products) && Array.isArray(request.products)) {
-      const allowedProductNames = new Set(request.products.map((product) => product.name));
+      const requestProducts = request.products.filter((product) => product?.name);
+      const allowedProductNames = new Set(requestProducts.map((product) => product.name));
       const allowedProducts = new Map(
-        request.products.map((product) => [product.name, product.description || ""]),
+        requestProducts.map((product) => [product.name, product]),
       );
+      const renderedProductNames = new Set(content.products.map((product) => product.name));
+      for (const product of requestProducts) {
+        if (!renderedProductNames.has(product.name)) {
+          errors.push(`Request product was not rendered: ${product.name}`);
+        }
+      }
       for (const product of content.products) {
         if (!allowedProductNames.has(product.name)) {
           errors.push(`Product not present in request was generated: ${product.name}`);
           continue;
         }
-        if ((product.description || "") !== allowedProducts.get(product.name)) {
+        const requestProduct = allowedProducts.get(product.name);
+        if ((product.description || "") !== (requestProduct.description || "")) {
           errors.push(`Product description for ${product.name} does not match request`);
+        }
+        if ((product.image_url || "") !== (requestProduct.image_url || "")) {
+          errors.push(`Product image_url for ${product.name} does not match request`);
         }
       }
     }
+    if ((!Array.isArray(request.products) || request.products.length === 0) && hasSection(content, "featured_products")) {
+      errors.push("featured_products section generated even though request.products is empty");
+    }
+    if (content.homepage_type === "company_intro" && Array.isArray(request.products) && request.products.length > 0 && !hasSection(content, "featured_products")) {
+      errors.push("request.products was provided but featured_products section was not rendered");
+    }
+    if (Array.isArray(request.history) && request.history.length > 0 && !Array.isArray(content.history)) {
+      errors.push("request.history was provided but content.history is not an array");
+    }
     if (Array.isArray(content.history) && Array.isArray(request.history)) {
-      const allowedHistory = new Set(
-        request.history.map((item) => `${item.year}\n${item.text}`),
+      const requestHistory = request.history.filter((item) => item?.year && item?.text);
+      const allowedHistory = new Set(requestHistory.map((item) => `${item.year}\n${item.text}`));
+      const renderedHistory = new Set(
+        content.history.map((item) => `${item.year}\n${item.text}`),
       );
+      if (requestHistory.length > 0 && !hasSection(content, "history")) {
+        errors.push("request.history was provided but history section was not rendered");
+      }
+      for (const item of requestHistory) {
+        if (!renderedHistory.has(`${item.year}\n${item.text}`)) {
+          errors.push(`Request history item was not rendered: ${item.year} ${item.text}`);
+        }
+      }
       for (const item of content.history) {
         if (!allowedHistory.has(`${item.year}\n${item.text}`)) {
           errors.push(`History item not present in request was generated: ${item.year} ${item.text}`);
         }
       }
     }
+    if (Array.isArray(request.portfolio) && request.portfolio.length > 0 && !Array.isArray(content.portfolio)) {
+      errors.push("request.portfolio was provided but content.portfolio is not an array");
+    }
     if (Array.isArray(content.portfolio) && Array.isArray(request.portfolio)) {
+      const requestPortfolio = request.portfolio.filter((item) => item?.title || item?.description);
       const allowedPortfolio = new Set(
-        request.portfolio.map((item) => `${item.title || ""}\n${item.description || ""}`),
+        requestPortfolio.map((item) => `${item.title || ""}\n${item.description || ""}`),
       );
+      const renderedPortfolio = new Set(
+        content.portfolio.map((item) => `${item.title || ""}\n${item.description || ""}`),
+      );
+      if (requestPortfolio.length > 0 && !hasSection(content, "portfolio")) {
+        errors.push("request.portfolio was provided but portfolio section was not rendered");
+      }
+      for (const item of requestPortfolio) {
+        if (!renderedPortfolio.has(`${item.title || ""}\n${item.description || ""}`)) {
+          errors.push(`Request portfolio item was not rendered: ${item.title || ""}`);
+        }
+      }
       for (const item of content.portfolio) {
         if (!allowedPortfolio.has(`${item.title || ""}\n${item.description || ""}`)) {
           errors.push(`Portfolio item not present in request was generated: ${item.title || ""}`);
@@ -290,3 +347,82 @@ if (!report.passed) {
 }
 
 console.log(JSON.stringify(report, null, 2));
+
+function validateRequestBoundTags({ content, request, errors }) {
+  const contentTags = Array.isArray(content.tags) ? content.tags : [];
+  const requestTags = Array.isArray(request.tags) ? request.tags : [];
+  const allowedTags = new Set(requestTags);
+  const renderedTags = new Set(contentTags);
+
+  if (requestTags.length === 0 && contentTags.length > 0) {
+    errors.push("tags were generated even though request.tags is empty");
+    return;
+  }
+
+  for (const tag of requestTags) {
+    if (!renderedTags.has(tag)) {
+      errors.push(`Request tag was not rendered: ${tag}`);
+    }
+  }
+
+  for (const tag of contentTags) {
+    if (!allowedTags.has(tag)) {
+      errors.push(`Tag not present in request was generated: ${tag}`);
+    }
+  }
+}
+
+function validateRequestBoundContact({ content, request, errors }) {
+  const contentContact =
+    content.contact && typeof content.contact === "object" && !Array.isArray(content.contact)
+      ? content.contact
+      : {};
+  const requestContact =
+    request.contact && typeof request.contact === "object" && !Array.isArray(request.contact)
+      ? request.contact
+      : {};
+  const allowedContactFields = new Set(["address", "phone", "email", "website_url"]);
+  const requestEntries = Object.entries(requestContact).filter(([, value]) => Boolean(value));
+
+  if (requestEntries.length > 0 && !hasSection(content, "contact_info")) {
+    errors.push("request.contact was provided but contact_info section was not rendered");
+  }
+
+  for (const [field, value] of requestEntries) {
+    if (contentContact[field] !== value) {
+      errors.push(`Request contact field was not rendered exactly: ${field}`);
+    }
+  }
+
+  for (const [field, value] of Object.entries(contentContact)) {
+    if (!allowedContactFields.has(field)) {
+      errors.push(`Unsupported contact field generated: ${field}`);
+      continue;
+    }
+    if (!(field in requestContact) || requestContact[field] !== value) {
+      errors.push(`Contact field not present in request was generated: ${field}`);
+    }
+  }
+
+  if (Object.keys(contentContact).length === 0 && hasSection(content, "contact_info")) {
+    errors.push("contact_info section generated without request contact data");
+  }
+}
+
+function validateRequestBoundCoverImage({ content, assets, request, errors }) {
+  const requestCover = typeof request.cover_image_url === "string" ? request.cover_image_url : "";
+  const contentCover = typeof content.cover_image_url === "string" ? content.cover_image_url : "";
+
+  if (!requestCover && contentCover) {
+    errors.push("cover_image_url was generated even though request.cover_image_url is empty");
+  }
+  if (requestCover && contentCover !== requestCover) {
+    errors.push("cover_image_url must match request.cover_image_url exactly");
+  }
+  if (requestCover && assets?.hero_image !== requestCover) {
+    errors.push("assets.hero_image must match request.cover_image_url exactly");
+  }
+  if (!requestCover && assets?.hero_image && /^https?:\/\//.test(assets.hero_image)) {
+    errors.push("External hero image generated without request.cover_image_url");
+  }
+}

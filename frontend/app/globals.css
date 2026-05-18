@@ -413,8 +413,115 @@ textarea {
   margin-top: 24px;
 }
 
+.generation-result-success {
+  border-color: #b8ead6;
+}
+
+.generation-result-failed {
+  border-color: #ffc1cb;
+  background: #fff8f9;
+}
+
+.failure-detail {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #ffc1cb;
+  border-radius: 8px;
+}
+
+.failure-detail strong {
+  color: #9f1239;
+}
+
+.failure-detail span {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.failure-detail code,
+.failure-detail pre {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.failure-detail pre {
+  max-height: 220px;
+  margin: 4px 0 0;
+  padding: 12px;
+  background: var(--soft);
+  border-radius: 6px;
+}
+
 .result-actions code {
   overflow-wrap: anywhere;
+}
+
+.profile-page {
+  max-width: 1040px;
+}
+
+.profile-cover {
+  overflow: hidden;
+  height: 280px;
+  margin-bottom: 0;
+  background: linear-gradient(135deg, #edf4ff, #f9fbff);
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+}
+
+.profile-cover img,
+.cover-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.profile-cover img {
+  object-fit: cover;
+}
+
+.cover-fallback {
+  background:
+    linear-gradient(135deg, rgba(47, 111, 237, 0.18), rgba(18, 163, 127, 0.12)),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.62) 0 12px, rgba(255, 255, 255, 0.22) 12px 24px);
+}
+
+.profile-summary {
+  padding: 32px 40px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.tag-row span {
+  padding: 6px 10px;
+  color: #4d5f78;
+  background: #edf4ff;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.info-card .meta-list {
+  margin-top: 0;
+}
+
+.item-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  margin-bottom: 12px;
+  border-radius: 6px;
 }
 
 .meta-list dd {
@@ -451,6 +558,14 @@ textarea {
   .index-hero {
     min-height: 320px;
     padding: 48px 0;
+  }
+
+  .profile-cover {
+    height: 180px;
+  }
+
+  .profile-summary {
+    padding: 24px 20px;
   }
 
   h1 {

@@ -5,6 +5,7 @@ import path from "node:path";
 const requestPath = process.argv[2] || "requests/sample-company-intro.json";
 const request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
 const companyIdPattern = /^[A-Za-z0-9_-]+$/;
+const RESULT_STYLE_VARIANT = "result_style_v1";
 
 const requiredRequestFields = [
   "request_id",
@@ -44,7 +45,12 @@ const assetTheme =
   templateConfig.asset_theme_defaults?.[request.industry] ||
   templateConfig.asset_theme_defaults?.default ||
   "business_general";
-
+const tags = normalizeStringArray(request.tags).slice(0, 12);
+const contact = normalizeContact(request.contact);
+const contactEntries = Object.entries(contact).filter(([, value]) => Boolean(value));
+const products = Array.isArray(request.products) ? request.products : [];
+const history = Array.isArray(request.history) ? request.history : [];
+const portfolio = Array.isArray(request.portfolio) ? request.portfolio : [];
 const coreStrengths =
   Array.isArray(request.core_strengths) && request.core_strengths.length > 0
     ? request.core_strengths
@@ -53,58 +59,50 @@ if (process.env.INJECT_FAKE_CLAIM === "1") {
   coreStrengths.push("업계 1위 수상 경력");
 }
 
-const sections = ["hero", "company_intro", "core_strengths"];
-
-if (request.homepage_type === "product") {
-  if (Array.isArray(request.products) && request.products.length > 0) {
-    sections.push("product_area");
-  } else {
-    sections.push("product_registration_cta");
-  }
-} else {
-  sections.push("business_summary");
-}
-
-if (Array.isArray(request.history) && request.history.length > 0) sections.push("history");
-if (Array.isArray(request.portfolio) && request.portfolio.length > 0) sections.push("portfolio");
-sections.push("contact_cta");
+const sections = buildSections();
+const businessSummary = `${request.industry} 분야에서 ${request.business_type}을 수행합니다.`;
+const productRegistrationCta =
+  request.homepage_type === "product" && products.length === 0
+    ? "홈페이지에 표시할 상품 정보를 등록하면 상품 영역을 구성할 수 있습니다."
+    : "";
 
 const content = {
   request_id: request.request_id,
   company_id: request.company_id,
   homepage_type: request.homepage_type,
   template_id: templateId,
+  template_variant: request.homepage_type === "company_intro" ? RESULT_STYLE_VARIANT : "basic",
   company_name: request.company_name,
   hero_title: request.one_line_intro || request.company_name,
   one_line_intro: request.one_line_intro || request.main_business_description,
   company_intro: request.company_intro || request.main_business_description,
-  business_summary: `${request.industry} 분야에서 ${request.business_type}을 수행합니다.`,
+  business_summary: businessSummary,
+  industry: request.industry,
+  business_type: request.business_type,
+  tags,
+  contact,
+  cover_image_url: typeof request.cover_image_url === "string" ? request.cover_image_url : "",
   core_strengths: coreStrengths,
-  products: Array.isArray(request.products) ? request.products : [],
-  history: Array.isArray(request.history) ? request.history : [],
-  portfolio: Array.isArray(request.portfolio) ? request.portfolio : [],
-  product_registration_cta:
-    request.homepage_type === "product" && (!request.products || request.products.length === 0)
-      ? "홈페이지에 표시할 상품 정보를 등록하면 상품 영역을 구성할 수 있습니다."
-      : "",
+  products,
+  history,
+  portfolio,
+  product_registration_cta: productRegistrationCta,
   contact_cta: `${request.company_name}의 사업과 서비스가 궁금하시다면 문의해 주세요.`,
   sections,
+  section_manifest: sections.map((section) => ({
+    id: section,
+    visible: true,
+  })),
 };
-
-const productSectionName =
-  request.homepage_type === "product" &&
-  (!Array.isArray(request.products) || request.products.length === 0)
-    ? "product_registration_cta"
-    : "product_area";
 
 const assets = {
   asset_theme: assetTheme,
-  hero_image: `${assetTheme}/hero-placeholder`,
+  hero_image: content.cover_image_url || `${assetTheme}/neutral-cover-fallback`,
   section_images: {
     company_intro: `${assetTheme}/company-intro-placeholder`,
     core_strengths: `${assetTheme}/strengths-placeholder`,
   },
-  fallback_used: true,
+  fallback_used: !content.cover_image_url,
 };
 
 const metadata = {
@@ -112,397 +110,21 @@ const metadata = {
   company_id: request.company_id,
   homepage_type: request.homepage_type,
   template_id: templateId,
+  template_variant: content.template_variant,
   generated_at: new Date().toISOString(),
   generator: "static-mvp-generator",
   model_provider: process.env.HOMEPAGE_GENERATOR_PROVIDER || "local_placeholder",
   model_name: process.env.HOMEPAGE_GENERATOR_MODEL || "deterministic-template",
 };
 
-const pageSource = `// Generated from ${templateId}. Do not edit outside generated-sites/{company_id}.
-import content from "./content.json";
-import assets from "./assets.json";
-
-export default function GeneratedHomepage() {
-  return (
-    <main data-template="${templateId}" data-asset-theme={assets.asset_theme}>
-      <section data-section="hero">
-        <h1>{content.hero_title}</h1>
-        <p>{content.one_line_intro}</p>
-      </section>
-      <section data-section="company_intro">
-        <h2>회사 소개</h2>
-        <p>{content.company_intro}</p>
-      </section>
-      <section data-section="core_strengths">
-        <h2>핵심 강점</h2>
-        <ul>{content.core_strengths.map((item) => <li key={item}>{item}</li>)}</ul>
-      </section>
-      <section data-section="${request.homepage_type === "product" ? productSectionName : "business_summary"}">
-        <h2>${request.homepage_type === "product" ? "상품 안내" : "사업 요약"}</h2>
-        ${
-          request.homepage_type === "product"
-            ? `{content.products.length > 0 ? content.products.map((product) => <article key={product.name}><h3>{product.name}</h3><p>{product.description}</p></article>) : <p>{content.product_registration_cta}</p>}`
-            : `<p>{content.business_summary}</p>`
-        }
-      </section>
-      {content.history?.length ? (
-        <section data-section="history">
-          <h2>연혁</h2>
-          {content.history.map((item) => <article key={item.year + item.text}><h3>{item.year}</h3><p>{item.text}</p></article>)}
-        </section>
-      ) : null}
-      {content.portfolio?.length ? (
-        <section data-section="portfolio">
-          <h2>포트폴리오</h2>
-          {content.portfolio.map((item) => <article key={item.title}><h3>{item.title}</h3><p>{item.description}</p></article>)}
-        </section>
-      ) : null}
-      <section data-section="contact_cta">
-        <h2>문의하기</h2>
-        <p>{content.contact_cta}</p>
-      </section>
-    </main>
-  );
-}
-`;
-
-const escapeHtml = (value) =>
-  String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-
-const renderStrengths = content.core_strengths
-  .map((item) => `<li>${escapeHtml(item)}</li>`)
-  .join("\n");
-
-const renderProducts = content.products.length
-  ? content.products
-      .map(
-        (product) => `
-        <article class="item-card">
-          <h3>${escapeHtml(product.name)}</h3>
-          <p>${escapeHtml(product.description || "")}</p>
-        </article>`,
-      )
-      .join("\n")
-  : `<div class="notice">${escapeHtml(content.product_registration_cta)}</div>`;
-const renderHistory = content.history.length
-  ? `<section class="section" data-section="history">
-        <div class="section-label">History</div>
-        <h2>연혁</h2>
-        <div class="item-grid">
-          ${content.history
-            .map(
-              (item) => `
-          <article class="item-card">
-            <h3>${escapeHtml(item.year)}</h3>
-            <p>${escapeHtml(item.text)}</p>
-          </article>`,
-            )
-            .join("\n")}
-        </div>
-      </section>`
-  : "";
-const renderPortfolio = content.portfolio.length
-  ? `<section class="section" data-section="portfolio">
-        <div class="section-label">Portfolio</div>
-        <h2>포트폴리오</h2>
-        <div class="item-grid">
-          ${content.portfolio
-            .map(
-              (item) => `
-          <article class="item-card">
-            <h3>${escapeHtml(item.title || "")}</h3>
-            <p>${escapeHtml(item.description || "")}</p>
-          </article>`,
-            )
-            .join("\n")}
-        </div>
-      </section>`
-  : "";
-
-const typeLabel = request.homepage_type === "product" ? "상품중심형" : "회사소개중심형";
-
-const htmlSource = `<!doctype html>
-<html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(content.company_name)}</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <header class="site-header">
-      <a class="brand" href="#top">${escapeHtml(content.company_name)}</a>
-      <nav aria-label="주요 섹션">
-        <a href="#intro">회사 소개</a>
-        <a href="#strengths">핵심 강점</a>
-        <a href="#contact">문의</a>
-      </nav>
-    </header>
-
-    <main id="top">
-      <section class="hero" data-section="hero">
-        <div class="eyebrow">${escapeHtml(typeLabel)} · ${escapeHtml(request.industry)}</div>
-        <h1>${escapeHtml(content.hero_title)}</h1>
-        <p>${escapeHtml(content.one_line_intro)}</p>
-      </section>
-
-      <section id="intro" class="section" data-section="company_intro">
-        <div class="section-label">Company</div>
-        <h2>회사 소개</h2>
-        <p>${escapeHtml(content.company_intro)}</p>
-        <dl class="facts">
-          <div>
-            <dt>업종</dt>
-            <dd>${escapeHtml(request.industry)}</dd>
-          </div>
-          <div>
-            <dt>업태</dt>
-            <dd>${escapeHtml(request.business_type)}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section id="strengths" class="section" data-section="core_strengths">
-        <div class="section-label">Strengths</div>
-        <h2>핵심 강점</h2>
-        <ul class="strength-list">
-          ${renderStrengths}
-        </ul>
-      </section>
-
-      ${
-        request.homepage_type === "product"
-          ? `<section class="section" data-section="${productSectionName}">
-        <div class="section-label">Products</div>
-        <h2>상품 안내</h2>
-        <div class="item-grid">
-          ${renderProducts}
-        </div>
-      </section>`
-          : `<section class="section" data-section="business_summary">
-        <div class="section-label">Business</div>
-        <h2>사업 요약</h2>
-        <p>${escapeHtml(content.business_summary)}</p>
-      </section>`
-      }
-
-      ${renderHistory}
-      ${renderPortfolio}
-
-      <section id="contact" class="contact" data-section="contact_cta">
-        <h2>문의하기</h2>
-        <p>${escapeHtml(content.contact_cta)}</p>
-      </section>
-    </main>
-  </body>
-</html>
-`;
-
-const cssSource = `:root {
-  color-scheme: light;
-  --text: #172033;
-  --muted: #5c667a;
-  --line: #dfe4ee;
-  --surface: #ffffff;
-  --soft: #f5f7fb;
-  --primary: #2f6fed;
-  --primary-dark: #1f4fb4;
-  --accent: #12a37f;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  color: var(--text);
-  background: var(--soft);
-  line-height: 1.6;
-}
-
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: center;
-  min-height: 64px;
-  padding: 0 40px;
-  background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid var(--line);
-}
-
-.brand {
-  color: var(--text);
-  font-weight: 700;
-  text-decoration: none;
-}
-
-nav {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-nav a {
-  color: var(--muted);
-  font-size: 14px;
-  text-decoration: none;
-}
-
-main {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 56px 24px 72px;
-}
-
-.hero {
-  min-height: 420px;
-  display: grid;
-  align-content: center;
-  padding: 72px 0;
-}
-
-.eyebrow,
-.section-label {
-  color: var(--primary);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-h1 {
-  max-width: 760px;
-  margin: 12px 0 20px;
-  font-size: 48px;
-  line-height: 1.18;
-  letter-spacing: 0;
-}
-
-h2 {
-  margin: 8px 0 18px;
-  font-size: 28px;
-  letter-spacing: 0;
-}
-
-h3 {
-  margin: 0 0 8px;
-  font-size: 18px;
-}
-
-p {
-  max-width: 780px;
-  margin: 0;
-  color: var(--muted);
-}
-
-.section,
-.contact {
-  margin-top: 28px;
-  padding: 40px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin: 28px 0 0;
-}
-
-.facts div,
-.item-card,
-.notice {
-  padding: 18px;
-  background: var(--soft);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-dt {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-dd {
-  margin: 4px 0 0;
-  font-weight: 700;
-}
-
-.strength-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.strength-list li {
-  min-height: 88px;
-  padding: 18px;
-  background: var(--soft);
-  border-left: 4px solid var(--accent);
-  border-radius: 8px;
-}
-
-.item-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.contact {
-  background: var(--primary-dark);
-}
-
-.contact h2,
-.contact p {
-  color: #ffffff;
-}
-
-@media (max-width: 720px) {
-  .site-header {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 16px 20px;
-  }
-
-  main {
-    padding: 36px 18px 56px;
-  }
-
-  .hero {
-    min-height: 320px;
-    padding: 48px 0;
-  }
-
-  h1 {
-    font-size: 34px;
-  }
-
-  .section,
-  .contact {
-    padding: 28px 20px;
-  }
-
-  .facts,
-  .strength-list,
-  .item-grid {
-    grid-template-columns: 1fr;
-  }
-}
-`;
+const pageSource =
+  request.homepage_type === "company_intro"
+    ? renderCompanyIntroPageTsx()
+    : renderProductPageTsx();
+const htmlSource =
+  request.homepage_type === "company_intro" ? renderCompanyIntroHtml() : renderProductHtml();
+const cssSource =
+  request.homepage_type === "company_intro" ? renderResultStyleCss() : renderBasicCss();
 
 const generatedFiles = [
   "content.json",
@@ -590,3 +212,526 @@ Initial generated files were written; validation has not run yet.
 );
 
 console.log(sitePath);
+
+function buildSections() {
+  if (request.homepage_type === "product") {
+    return [
+      "hero",
+      "company_intro",
+      "core_strengths",
+      products.length > 0 ? "product_area" : "product_registration_cta",
+      "contact_cta",
+    ];
+  }
+
+  const companySections = ["hero", "company_summary", "company_intro", "core_strengths"];
+  if (contactEntries.length > 0) companySections.push("contact_info");
+  if (history.length > 0) companySections.push("history");
+  if (portfolio.length > 0) companySections.push("portfolio");
+  if (products.length > 0) companySections.push("featured_products");
+  companySections.push("contact_cta");
+  return companySections;
+}
+
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function normalizeContact(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const allowed = ["address", "phone", "email", "website_url"];
+  return Object.fromEntries(
+    allowed
+      .map((key) => [key, typeof value[key] === "string" ? value[key].trim() : ""])
+      .filter(([, item]) => Boolean(item)),
+  );
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderCompanyIntroPageTsx() {
+  return `// Generated from ${templateId} (${RESULT_STYLE_VARIANT}). Do not edit outside generated-sites/{company_id}.
+import content from "./content.json";
+import assets from "./assets.json";
+
+const contactLabels = {
+  address: "주소",
+  phone: "전화",
+  email: "이메일",
+  website_url: "웹사이트",
+};
+
+export default function GeneratedHomepage() {
+  const contactEntries = Object.entries(content.contact || {});
+  const hasCoverImage = Boolean(content.cover_image_url);
+
+  return (
+    <main className="profile-page" data-template={content.template_id} data-template-variant={content.template_variant} data-asset-theme={assets.asset_theme}>
+      <section className="profile-cover" data-section="hero">
+        {hasCoverImage ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
+      </section>
+      <section className="profile-summary" data-section="company_summary">
+        <div>
+          <p className="eyebrow">{content.industry}</p>
+          <h1>{content.company_name}</h1>
+          <p>{content.one_line_intro}</p>
+          <div className="tag-row">
+            {content.tags.map((tag) => <span key={tag}>{tag}</span>)}
+            <span>{content.business_type}</span>
+          </div>
+        </div>
+      </section>
+      {contactEntries.length > 0 ? (
+        <section className="info-card" data-section="contact_info">
+          <h2>기업 정보</h2>
+          <dl className="contact-list">
+            {contactEntries.map(([key, value]) => (
+              <div key={key}>
+                <dt>{contactLabels[key] || key}</dt>
+                <dd>{String(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+      <section className="info-card" data-section="company_intro">
+        <h2>기업 소개</h2>
+        <p>{content.company_intro}</p>
+      </section>
+      <section className="info-card" data-section="core_strengths">
+        <h2>핵심 강점</h2>
+        <ul className="strength-grid">
+          {content.core_strengths.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      </section>
+      {content.history.length > 0 ? (
+        <section className="info-card" data-section="history">
+          <h2>연혁</h2>
+          <ol className="timeline">
+            {content.history.map((item) => <li key={item.year + item.text}><strong>{item.year}</strong><span>{item.text}</span></li>)}
+          </ol>
+        </section>
+      ) : null}
+      {content.portfolio.length > 0 ? (
+        <section className="info-card" data-section="portfolio">
+          <h2>포트폴리오</h2>
+          <div className="card-grid">
+            {content.portfolio.map((item) => <article key={item.title || item.description}><h3>{item.title}</h3><p>{item.description}</p></article>)}
+          </div>
+        </section>
+      ) : null}
+      {content.products.length > 0 ? (
+        <section className="info-card" data-section="featured_products">
+          <h2>주요 상품</h2>
+          <div className="product-grid">
+            {content.products.map((product) => (
+              <article key={product.name}>
+                {product.image_url ? <img src={product.image_url} alt="" /> : null}
+                <div><h3>{product.name}</h3><p>{product.description}</p></div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      <section className="contact-cta" data-section="contact_cta">
+        <h2>문의하기</h2>
+        <p>{content.contact_cta}</p>
+      </section>
+    </main>
+  );
+}
+`;
+}
+
+function renderProductPageTsx() {
+  const productSectionName = products.length === 0 ? "product_registration_cta" : "product_area";
+  return `// Generated from ${templateId}. Do not edit outside generated-sites/{company_id}.
+import content from "./content.json";
+import assets from "./assets.json";
+
+export default function GeneratedHomepage() {
+  return (
+    <main data-template="${templateId}" data-asset-theme={assets.asset_theme}>
+      <section data-section="hero"><h1>{content.hero_title}</h1><p>{content.one_line_intro}</p></section>
+      <section data-section="company_intro"><h2>회사 소개</h2><p>{content.company_intro}</p></section>
+      <section data-section="core_strengths"><h2>핵심 강점</h2><ul>{content.core_strengths.map((item) => <li key={item}>{item}</li>)}</ul></section>
+      <section data-section="${productSectionName}"><h2>상품 안내</h2>{content.products.length > 0 ? content.products.map((product) => <article key={product.name}><h3>{product.name}</h3><p>{product.description}</p></article>) : <p>{content.product_registration_cta}</p>}</section>
+      <section data-section="contact_cta"><h2>문의하기</h2><p>{content.contact_cta}</p></section>
+    </main>
+  );
+}
+`;
+}
+
+function renderCompanyIntroHtml() {
+  const tagHtml = [...tags, request.business_type]
+    .filter(Boolean)
+    .map((tag) => `<span>${escapeHtml(tag)}</span>`)
+    .join("\n");
+  const coverHtml = content.cover_image_url
+    ? `<img src="${escapeHtml(content.cover_image_url)}" alt="" />`
+    : `<div class="cover-fallback" aria-hidden="true"></div>`;
+  const contactHtml =
+    contactEntries.length > 0
+      ? `<section class="info-card" data-section="contact_info">
+        <h2>기업 정보</h2>
+        <dl class="contact-list">
+          ${contactEntries
+            .map(
+              ([key, value]) => `<div><dt>${escapeHtml(contactLabel(key))}</dt><dd>${escapeHtml(value)}</dd></div>`,
+            )
+            .join("\n")}
+        </dl>
+      </section>`
+      : "";
+  const historyHtml =
+    history.length > 0
+      ? `<section class="info-card" data-section="history">
+        <h2>연혁</h2>
+        <ol class="timeline">
+          ${history.map((item) => `<li><strong>${escapeHtml(item.year)}</strong><span>${escapeHtml(item.text)}</span></li>`).join("\n")}
+        </ol>
+      </section>`
+      : "";
+  const portfolioHtml =
+    portfolio.length > 0
+      ? `<section class="info-card" data-section="portfolio">
+        <h2>포트폴리오</h2>
+        <div class="card-grid">
+          ${portfolio
+            .map((item) => `<article><h3>${escapeHtml(item.title || "")}</h3><p>${escapeHtml(item.description || "")}</p></article>`)
+            .join("\n")}
+        </div>
+      </section>`
+      : "";
+  const productsHtml =
+    products.length > 0
+      ? `<section class="info-card" data-section="featured_products">
+        <h2>주요 상품</h2>
+        <div class="product-grid">
+          ${products
+            .map(
+              (product) => `<article>
+                ${product.image_url ? `<img src="${escapeHtml(product.image_url)}" alt="" />` : ""}
+                <div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description || "")}</p></div>
+              </article>`,
+            )
+            .join("\n")}
+        </div>
+      </section>`
+      : "";
+
+  return `<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(content.company_name)}</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="profile-page" data-template="${templateId}" data-template-variant="${RESULT_STYLE_VARIANT}" data-asset-theme="${escapeHtml(assetTheme)}">
+      <section class="profile-cover" data-section="hero">${coverHtml}</section>
+      <section class="profile-summary" data-section="company_summary">
+        <p class="eyebrow">${escapeHtml(content.industry)}</p>
+        <h1>${escapeHtml(content.company_name)}</h1>
+        <p>${escapeHtml(content.one_line_intro)}</p>
+        <div class="tag-row">${tagHtml}</div>
+      </section>
+      ${contactHtml}
+      <section class="info-card" data-section="company_intro"><h2>기업 소개</h2><p>${escapeHtml(content.company_intro)}</p></section>
+      <section class="info-card" data-section="core_strengths">
+        <h2>핵심 강점</h2>
+        <ul class="strength-grid">${coreStrengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n")}</ul>
+      </section>
+      ${historyHtml}
+      ${portfolioHtml}
+      ${productsHtml}
+      <section class="contact-cta" data-section="contact_cta"><h2>문의하기</h2><p>${escapeHtml(content.contact_cta)}</p></section>
+    </main>
+  </body>
+</html>
+`;
+}
+
+function renderProductHtml() {
+  const productSectionName = products.length === 0 ? "product_registration_cta" : "product_area";
+  const renderProducts = products.length
+    ? products.map((product) => `<article class="item-card"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description || "")}</p></article>`).join("\n")
+    : `<div class="notice">${escapeHtml(productRegistrationCta)}</div>`;
+  return `<!doctype html>
+<html lang="ko"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(content.company_name)}</title><link rel="stylesheet" href="./styles.css" /></head>
+<body><main><section class="hero" data-section="hero"><h1>${escapeHtml(content.hero_title)}</h1><p>${escapeHtml(content.one_line_intro)}</p></section><section class="section" data-section="company_intro"><h2>회사 소개</h2><p>${escapeHtml(content.company_intro)}</p></section><section class="section" data-section="core_strengths"><h2>핵심 강점</h2><ul class="strength-list">${coreStrengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n")}</ul></section><section class="section" data-section="${productSectionName}"><h2>상품 안내</h2><div class="item-grid">${renderProducts}</div></section><section class="contact" data-section="contact_cta"><h2>문의하기</h2><p>${escapeHtml(content.contact_cta)}</p></section></main></body></html>`;
+}
+
+function contactLabel(key) {
+  return {
+    address: "주소",
+    phone: "전화",
+    email: "이메일",
+    website_url: "웹사이트",
+  }[key] || key;
+}
+
+function renderResultStyleCss() {
+  return `:root {
+  color-scheme: light;
+  --text: #1d2433;
+  --muted: #687386;
+  --line: #e3e8f0;
+  --surface: #ffffff;
+  --soft: #f6f8fb;
+  --primary: #4f7fe8;
+  --primary-soft: #edf4ff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  color: var(--text);
+  background: var(--soft);
+  line-height: 1.6;
+}
+
+.profile-page {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+  padding: 48px 20px 80px;
+}
+
+.profile-cover {
+  overflow: hidden;
+  height: 280px;
+  background: linear-gradient(135deg, #edf4ff, #f9fbff);
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+}
+
+.profile-cover img,
+.cover-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.profile-cover img { object-fit: cover; }
+
+.cover-fallback {
+  background:
+    linear-gradient(135deg, rgba(79, 127, 232, 0.18), rgba(18, 163, 127, 0.12)),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.6) 0 12px, rgba(255,255,255,0.2) 12px 24px);
+}
+
+.profile-summary,
+.info-card,
+.contact-cta {
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.profile-summary {
+  margin-bottom: 20px;
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+}
+
+.info-card,
+.contact-cta {
+  margin-top: 20px;
+  border-radius: 8px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+h2 {
+  margin: 0 0 18px;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.tag-row span {
+  padding: 6px 10px;
+  color: #4d5f78;
+  background: var(--primary-soft);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.contact-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.contact-list div,
+.strength-grid li,
+.card-grid article,
+.product-grid article {
+  padding: 16px;
+  background: #fbfcff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+dd {
+  margin: 4px 0 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.strength-grid,
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.strength-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.strength-grid li {
+  min-height: 56px;
+  border-left: 4px solid var(--primary);
+}
+
+.timeline {
+  display: grid;
+  gap: 14px;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.timeline strong {
+  display: inline-flex;
+  justify-content: center;
+  padding: 4px 8px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: 6px;
+}
+
+.card-grid,
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.product-grid img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.contact-cta {
+  color: #ffffff;
+  background: #264f9d;
+  border-color: #264f9d;
+}
+
+.contact-cta p {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+@media (max-width: 720px) {
+  .profile-page { padding: 24px 14px 56px; }
+  .profile-cover { height: 180px; }
+  .profile-summary,
+  .info-card,
+  .contact-cta { padding: 22px 18px; }
+  h1 { font-size: 26px; }
+  .contact-list,
+  .strength-grid,
+  .card-grid,
+  .product-grid { grid-template-columns: 1fr; }
+  .timeline li { grid-template-columns: 1fr; }
+}
+`;
+}
+
+function renderBasicCss() {
+  return `:root {
+  color-scheme: light;
+  --text: #172033;
+  --muted: #5c667a;
+  --line: #dfe4ee;
+  --surface: #ffffff;
+  --soft: #f5f7fb;
+  --primary: #2f6fed;
+  --primary-dark: #1f4fb4;
+  --accent: #12a37f;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; color: var(--text); background: var(--soft); line-height: 1.6; }
+main { max-width: 1040px; margin: 0 auto; padding: 56px 24px 72px; }
+.hero { min-height: 420px; display: grid; align-content: center; padding: 72px 0; }
+h1 { max-width: 760px; margin: 12px 0 20px; font-size: 48px; line-height: 1.18; letter-spacing: 0; }
+h2 { margin: 8px 0 18px; font-size: 28px; letter-spacing: 0; }
+h3 { margin: 0 0 8px; font-size: 18px; }
+p { max-width: 780px; margin: 0; color: var(--muted); }
+.section,.contact { margin-top: 28px; padding: 40px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.strength-list,.item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.strength-list { padding: 0; list-style: none; }
+.strength-list li,.item-card,.notice { padding: 18px; background: var(--soft); border: 1px solid var(--line); border-radius: 8px; }
+.contact { background: var(--primary-dark); }
+.contact h2,.contact p { color: #ffffff; }
+@media (max-width: 720px) { main { padding: 36px 18px 56px; } .hero { min-height: 320px; padding: 48px 0; } h1 { font-size: 34px; } .section,.contact { padding: 28px 20px; } .strength-list,.item-grid { grid-template-columns: 1fr; } }
+`;
+}

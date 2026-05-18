@@ -27,6 +27,22 @@
     "main_business_description": { "type": "string", "minLength": 10 },
     "one_line_intro": { "type": "string" },
     "company_intro": { "type": "string" },
+    "cover_image_url": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 12
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "website_url": { "type": "string" }
+      }
+    },
     "core_strengths": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },

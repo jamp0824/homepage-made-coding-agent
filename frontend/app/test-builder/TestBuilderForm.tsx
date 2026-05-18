@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 type GenerateResult = {
+  ok: boolean;
   requestId: string;
   companyId: string;
   modelProvider: string;
@@ -16,6 +17,10 @@ type GenerateResult = {
   previewAvailable: boolean;
   retryCount: number;
   exitCode: number | null;
+  failureCategory?: string | null;
+  failureTitle?: string | null;
+  failureMessage?: string | null;
+  nextAction?: string | null;
   errorSummary?: string;
 };
 
@@ -28,8 +33,17 @@ const initialForm = {
   oneLineIntro: "반복 업무를 줄이는 자동화 솔루션",
   companyIntro: "주식회사 테스트홈은 기업의 업무 흐름을 분석하고 자동화 시스템을 구축하는 회사입니다.",
   coreStrengths: "업무 자동화\n데이터 관리\n기업 맞춤 구축",
+  tags: "업무 자동화\n데이터 관리\n기업 맞춤",
+  coverImageUrl: "",
+  contactAddress: "서울특별시 강남구 테스트로 10",
+  contactPhone: "02-1234-5678",
+  contactEmail: "hello@testhome.example",
+  contactWebsiteUrl: "https://example.com",
   productName: "업무 자동화 대시보드",
   productDescription: "반복 업무 현황을 한눈에 보고 자동화 상태를 관리하는 대시보드입니다.",
+  productImageUrl: "",
+  portfolioItems: "업무 자동화 포털 구축 | 반복 업무 신청과 승인 상태를 한 화면에서 관리하는 포털을 구축했습니다.",
+  historyItems: "2026 | 업무 자동화 솔루션 테스트 서비스를 시작했습니다.",
   generationMode: "goose",
 };
 
@@ -53,7 +67,7 @@ export default function TestBuilderForm() {
       });
       const body = await response.json();
       if (!response.ok) {
-        setError(body.error ? `${body.error}: ${(body.fields || []).join(", ")}` : "생성 실패");
+        setError(body.error ? `${body.error}: ${(body.fields || []).join(", ")}` : "요청 처리 실패");
         setResult(body);
         return;
       }
@@ -184,14 +198,66 @@ export default function TestBuilderForm() {
               onChange={(event) => updateField("coreStrengths", event.target.value)}
             />
           </label>
+          <label>
+            태그
+            <textarea
+              rows={3}
+              value={form.tags}
+              onChange={(event) => updateField("tags", event.target.value)}
+            />
+          </label>
+          <label>
+            커버 이미지 URL
+            <input
+              value={form.coverImageUrl}
+              onChange={(event) => updateField("coverImageUrl", event.target.value)}
+            />
+          </label>
         </section>
 
-        {form.homepageType === "product" ? (
-          <section className="form-section" aria-label="상품 정보">
-            <div>
-              <p className="section-label">Product</p>
-              <h2>상품 정보</h2>
-            </div>
+        <section className="form-section" aria-label="연락처 정보">
+          <div>
+            <p className="section-label">Contact</p>
+            <h2>연락처</h2>
+          </div>
+          <div className="form-grid">
+            <label>
+              주소
+              <input
+                value={form.contactAddress}
+                onChange={(event) => updateField("contactAddress", event.target.value)}
+              />
+            </label>
+            <label>
+              전화번호
+              <input
+                value={form.contactPhone}
+                onChange={(event) => updateField("contactPhone", event.target.value)}
+              />
+            </label>
+            <label>
+              이메일
+              <input
+                value={form.contactEmail}
+                onChange={(event) => updateField("contactEmail", event.target.value)}
+              />
+            </label>
+            <label>
+              웹사이트
+              <input
+                value={form.contactWebsiteUrl}
+                onChange={(event) => updateField("contactWebsiteUrl", event.target.value)}
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="form-section" aria-label="상품 정보">
+          <div>
+            <p className="section-label">Product</p>
+            <h2>상품 정보</h2>
+          </div>
+          <div className="form-grid">
             <label>
               상품명
               <input
@@ -207,8 +273,38 @@ export default function TestBuilderForm() {
                 onChange={(event) => updateField("productDescription", event.target.value)}
               />
             </label>
-          </section>
-        ) : null}
+            <label>
+              상품 이미지 URL
+              <input
+                value={form.productImageUrl}
+                onChange={(event) => updateField("productImageUrl", event.target.value)}
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="form-section" aria-label="포트폴리오와 연혁">
+          <div>
+            <p className="section-label">Proof</p>
+            <h2>포트폴리오와 연혁</h2>
+          </div>
+          <label>
+            포트폴리오
+            <textarea
+              rows={3}
+              value={form.portfolioItems}
+              onChange={(event) => updateField("portfolioItems", event.target.value)}
+            />
+          </label>
+          <label>
+            연혁
+            <textarea
+              rows={3}
+              value={form.historyItems}
+              onChange={(event) => updateField("historyItems", event.target.value)}
+            />
+          </label>
+        </section>
 
         <div className="form-actions">
           <button disabled={isGenerating} type="submit">
@@ -236,10 +332,13 @@ export default function TestBuilderForm() {
       ) : null}
 
       {result ? (
-        <section className="generation-result" aria-label="생성 결과">
+        <section
+          className={`generation-result ${result.previewAvailable ? "generation-result-success" : "generation-result-failed"}`}
+          aria-label="생성 결과"
+        >
           <div>
             <p className="section-label">Result</p>
-            <h2>{result.status}</h2>
+            <h2>{renderResultTitle(result)}</h2>
           </div>
           <dl className="meta-list">
             <div>
@@ -266,7 +365,24 @@ export default function TestBuilderForm() {
               <dt>model</dt>
               <dd>{result.modelName}</dd>
             </div>
+            <div>
+              <dt>retry</dt>
+              <dd>{result.retryCount}</dd>
+            </div>
+            <div>
+              <dt>status</dt>
+              <dd>{result.status}</dd>
+            </div>
           </dl>
+          {!result.previewAvailable ? (
+            <div className="failure-detail" role="status">
+              <strong>{result.failureTitle || "자동 생성 실패"}</strong>
+              <span>{result.failureMessage || "홈페이지 자동 생성이 완료되지 않았습니다."}</span>
+              {result.nextAction ? <span>{result.nextAction}</span> : null}
+              {result.failureCategory ? <code>{result.failureCategory}</code> : null}
+              {result.errorSummary ? <pre>{result.errorSummary}</pre> : null}
+            </div>
+          ) : null}
           <div className="result-actions">
             {result.previewAvailable ? (
               <Link className="primary-link" href={result.homepageUrl}>
@@ -281,4 +397,10 @@ export default function TestBuilderForm() {
       ) : null}
     </main>
   );
+}
+
+function renderResultTitle(result: GenerateResult) {
+  if (result.previewAvailable) return "홈페이지 생성 완료";
+  if (result.status === "manual_required") return "자동 생성 예외";
+  return "자동 생성 실패";
 }

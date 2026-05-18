@@ -41,6 +41,11 @@ export default async function GeneratedHomepagePage({ params }: PageProps) {
 
   const { content } = site;
   const typeLabel = content.homepage_type === "product" ? "상품중심형" : "회사소개중심형";
+  const isResultStyle = content.template_variant === "result_style_v1";
+
+  if (isResultStyle) {
+    return renderResultStyleHomepage(content, site.result.status);
+  }
 
   return (
     <>
@@ -128,6 +133,124 @@ export default async function GeneratedHomepagePage({ params }: PageProps) {
         </section>
       </main>
     </>
+  );
+}
+
+function renderResultStyleHomepage(content: GeneratedContent, status: string) {
+  const contactEntries = Object.entries(content.contact || {}).filter(([, value]) => Boolean(value));
+  const tags = [...(content.tags || []), content.business_type].filter(Boolean);
+
+  return (
+    <main className="homepage profile-page" data-template={content.template_id} data-template-variant={content.template_variant}>
+      <section className="profile-cover" data-section="hero">
+        {content.cover_image_url ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
+      </section>
+
+      <section className="profile-summary" data-section="company_summary">
+        <p className="eyebrow">{content.industry || "회사소개중심형"}</p>
+        <h1>{content.company_name}</h1>
+        <p>{content.one_line_intro}</p>
+        <div className="tag-row">
+          {tags.map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+          <span>{status}</span>
+        </div>
+      </section>
+
+      {contactEntries.length > 0 ? (
+        <section className="section info-card" data-section="contact_info">
+          <div className="section-label">Info</div>
+          <h2>기업 정보</h2>
+          <dl className="meta-list">
+            {contactEntries.map(([key, value]) => (
+              <div key={key}>
+                <dt>{contactLabel(key)}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+
+      <section className="section info-card" data-section="company_intro">
+        <div className="section-label">Company</div>
+        <h2>기업 소개</h2>
+        <p>{content.company_intro}</p>
+      </section>
+
+      <section className="section info-card" data-section="core_strengths">
+        <div className="section-label">Strengths</div>
+        <h2>핵심 강점</h2>
+        <ul className="strength-list">
+          {content.core_strengths.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      {content.history.length > 0 ? (
+        <section className="section info-card" data-section="history">
+          <div className="section-label">History</div>
+          <h2>연혁</h2>
+          <div className="item-grid">
+            {content.history.map((item) => (
+              <article className="item-card" key={`${item.year}-${item.text}`}>
+                <h3>{item.year}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {content.portfolio.length > 0 ? (
+        <section className="section info-card" data-section="portfolio">
+          <div className="section-label">Portfolio</div>
+          <h2>포트폴리오</h2>
+          <div className="item-grid">
+            {content.portfolio.map((item) => (
+              <article className="item-card" key={item.title ?? item.description}>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {content.products.length > 0 ? (
+        <section className="section info-card" data-section="featured_products">
+          <div className="section-label">Products</div>
+          <h2>주요 상품</h2>
+          <div className="item-grid">
+            {content.products.map((product) => (
+              <article className="item-card" key={product.name}>
+                {product.image_url ? <img className="item-image" src={product.image_url} alt="" /> : null}
+                <h3>{product.name}</h3>
+                <p>{product.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="contact" data-section="contact_cta">
+        <h2>문의하기</h2>
+        <p>{content.contact_cta}</p>
+      </section>
+    </main>
+  );
+}
+
+function contactLabel(key: string) {
+  return (
+    {
+      address: "주소",
+      phone: "전화",
+      email: "이메일",
+      website_url: "웹사이트",
+    }[key] || key
   );
 }
 

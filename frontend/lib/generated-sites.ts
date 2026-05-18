@@ -9,6 +9,7 @@ export type HomepageType = "company_intro" | "product";
 export type GeneratedProduct = {
   name: string;
   description?: string;
+  image_url?: string;
 };
 
 export type GeneratedContent = {
@@ -16,11 +17,22 @@ export type GeneratedContent = {
   company_id: string;
   homepage_type: HomepageType;
   template_id: string;
+  template_variant?: string;
   company_name: string;
   hero_title: string;
   one_line_intro: string;
   company_intro: string;
   business_summary: string;
+  industry?: string;
+  business_type?: string;
+  tags?: string[];
+  contact?: {
+    address?: string;
+    phone?: string;
+    email?: string;
+    website_url?: string;
+  };
+  cover_image_url?: string;
   core_strengths: string[];
   products: GeneratedProduct[];
   history: Array<{
@@ -34,6 +46,10 @@ export type GeneratedContent = {
   product_registration_cta: string;
   contact_cta: string;
   sections: string[];
+  section_manifest?: Array<{
+    id: string;
+    visible: boolean;
+  }>;
 };
 
 export type GeneratedMetadata = {
@@ -41,6 +57,7 @@ export type GeneratedMetadata = {
   company_id: string;
   homepage_type: string;
   template_id: string;
+  template_variant?: string;
   generated_at?: string;
   generator?: string;
   model_provider?: string;

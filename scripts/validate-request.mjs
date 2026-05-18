@@ -22,6 +22,9 @@ const allowedTopLevelFields = new Set([
   ...requiredFields,
   "one_line_intro",
   "company_intro",
+  "cover_image_url",
+  "tags",
+  "contact",
   "core_strengths",
   "products",
   "portfolio",
@@ -107,6 +110,26 @@ if (!request || typeof request !== "object" || Array.isArray(request)) {
     }
   }
 
+  if ("cover_image_url" in request && typeof request.cover_image_url !== "string") {
+    errors.push("cover_image_url must be a string");
+  }
+
+  if ("tags" in request) {
+    if (!Array.isArray(request.tags)) {
+      errors.push("tags must be an array");
+    } else {
+      if (request.tags.length > 12) {
+        errors.push("tags must contain at most 12 items");
+      }
+      request.tags.forEach((item, index) => {
+        if (typeof item !== "string" || item.trim() === "") {
+          errors.push(`tags[${index}] must be a non-empty string`);
+        }
+      });
+    }
+  }
+
+  if ("contact" in request) validateContact(request.contact, errors);
   if ("products" in request) validateProducts(request.products, errors);
   if ("history" in request) validateHistory(request.history, errors);
   if ("portfolio" in request) validatePortfolio(request.portfolio, errors);
@@ -148,6 +171,23 @@ function validateProducts(products, outputErrors) {
       outputErrors.push(`products[${index}].image_url must be a string`);
     }
   });
+}
+
+function validateContact(contact, outputErrors) {
+  if (!contact || typeof contact !== "object" || Array.isArray(contact)) {
+    outputErrors.push("contact must be an object");
+    return;
+  }
+
+  const allowedFields = new Set(["address", "phone", "email", "website_url"]);
+  for (const field of Object.keys(contact)) {
+    if (!allowedFields.has(field)) {
+      outputErrors.push(`contact has unsupported field: ${field}`);
+    }
+    if (typeof contact[field] !== "string") {
+      outputErrors.push(`contact.${field} must be a string`);
+    }
+  }
 }
 
 function validateHistory(history, outputErrors) {

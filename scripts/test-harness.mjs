@@ -17,6 +17,17 @@ runTest("valid request schema: product with items", () => {
   run("node", ["scripts/validate-request.mjs", "requests/sample-product-with-items.json"]);
 });
 
+runTest("valid request schema: result style full", () => {
+  run("node", ["scripts/validate-request.mjs", "harness/fixtures/company-intro-result-style-full.json"]);
+});
+
+runTest("valid request schema: result style empty optionals", () => {
+  run("node", [
+    "scripts/validate-request.mjs",
+    "harness/fixtures/company-intro-result-style-empty-optionals.json",
+  ]);
+});
+
 runTest("invalid request fails before generation: missing company_name", () => {
   runExpectFailure("node", [
     "scripts/validate-request.mjs",
@@ -86,6 +97,144 @@ runTest("happy path pipeline: company intro with history and portfolio", () => {
   const content = readJson("generated-sites/COMPANY_HISTORY_001/content.json");
   assert(content.sections.includes("history"), "history fixture must render history section");
   assert(content.sections.includes("portfolio"), "portfolio fixture must render portfolio section");
+});
+
+runTest("result style full fixture renders request-bound optional sections", () => {
+  run("bash", [
+    "scripts/run-homepage-builder.sh",
+    "harness/fixtures/company-intro-result-style-full.json",
+  ]);
+  assertResult("generated-sites/COMPANY_RESULT_STYLE_FULL/generation-result.json", {
+    status: "generated",
+    buildPassed: true,
+    validationPassed: true,
+  });
+
+  const content = readJson("generated-sites/COMPANY_RESULT_STYLE_FULL/content.json");
+  const metadata = readJson("generated-sites/COMPANY_RESULT_STYLE_FULL/metadata.json");
+  assert(content.template_variant === "result_style_v1", "content must record result_style_v1");
+  assert(metadata.template_variant === "result_style_v1", "metadata must record result_style_v1");
+  assert(content.sections.includes("contact_info"), "full fixture must render contact_info");
+  assert(content.sections.includes("history"), "full fixture must render history");
+  assert(content.sections.includes("portfolio"), "full fixture must render portfolio");
+  assert(content.sections.includes("featured_products"), "full fixture must render featured_products");
+  assert(content.tags.includes("스마트팩토리"), "full fixture must render request tags");
+  assert(content.contact.email === "hello@example.com", "full fixture must render request contact");
+});
+
+runTest("result style empty fixture hides optional sections", () => {
+  run("bash", [
+    "scripts/run-homepage-builder.sh",
+    "harness/fixtures/company-intro-result-style-empty-optionals.json",
+  ]);
+  assertResult("generated-sites/COMPANY_RESULT_STYLE_EMPTY/generation-result.json", {
+    status: "generated",
+    buildPassed: true,
+    validationPassed: true,
+  });
+
+  const content = readJson("generated-sites/COMPANY_RESULT_STYLE_EMPTY/content.json");
+  assert(content.template_variant === "result_style_v1", "empty fixture must use result style");
+  for (const hiddenSection of ["contact_info", "history", "portfolio", "featured_products"]) {
+    assert(
+      !content.sections.includes(hiddenSection),
+      `empty fixture must not render ${hiddenSection}`,
+    );
+  }
+  assert(content.tags.length === 0, "empty fixture must not invent tags");
+  assert(Object.keys(content.contact).length === 0, "empty fixture must not invent contact");
+});
+
+runTest("result style request-bound contact, tags, cover, and products are enforced", () => {
+  run("bash", [
+    "scripts/run-homepage-builder.sh",
+    "harness/fixtures/company-intro-result-style-fake-contact.json",
+  ]);
+
+  const contentPath = path.join(
+    process.cwd(),
+    "generated-sites",
+    "COMPANY_RESULT_STYLE_FAKE",
+    "content.json",
+  );
+  const assetsPath = path.join(
+    process.cwd(),
+    "generated-sites",
+    "COMPANY_RESULT_STYLE_FAKE",
+    "assets.json",
+  );
+  const originalContent = fs.readFileSync(contentPath, "utf8");
+  const originalAssets = fs.readFileSync(assetsPath, "utf8");
+  const content = JSON.parse(originalContent);
+  const assets = JSON.parse(originalAssets);
+  content.tags.push("요청에 없는 태그");
+  content.contact.phone = "02-0000-0000";
+  content.cover_image_url = "https://example.com/fake-cover.jpg";
+  content.products.push({ name: "요청에 없는 상품", description: "허위 상품" });
+  content.sections.push("featured_products");
+  assets.hero_image = "https://example.com/fake-cover.jpg";
+
+  try {
+    fs.writeFileSync(contentPath, JSON.stringify(content, null, 2));
+    fs.writeFileSync(assetsPath, JSON.stringify(assets, null, 2));
+    runExpectFailure("bash", [
+      "scripts/validate-generated-site.sh",
+      "generated-sites/COMPANY_RESULT_STYLE_FAKE",
+      "harness/fixtures/company-intro-result-style-fake-contact.json",
+    ]);
+  } finally {
+    fs.writeFileSync(contentPath, originalContent);
+    fs.writeFileSync(assetsPath, originalAssets);
+    run("bash", [
+      "scripts/validate-generated-site.sh",
+      "generated-sites/COMPANY_RESULT_STYLE_FAKE",
+      "harness/fixtures/company-intro-result-style-fake-contact.json",
+    ]);
+  }
+});
+
+runTest("result style provided optional fields must be rendered", () => {
+  run("bash", [
+    "scripts/run-homepage-builder.sh",
+    "harness/fixtures/company-intro-result-style-full.json",
+  ]);
+
+  const sitePath = path.join(process.cwd(), "generated-sites", "COMPANY_RESULT_STYLE_FULL");
+  const contentPath = path.join(sitePath, "content.json");
+  const assetsPath = path.join(sitePath, "assets.json");
+  const originalContent = fs.readFileSync(contentPath, "utf8");
+  const originalAssets = fs.readFileSync(assetsPath, "utf8");
+  const content = JSON.parse(originalContent);
+  const assets = JSON.parse(originalAssets);
+  content.tags = [];
+  content.contact = {};
+  content.cover_image_url = "";
+  content.products = [];
+  content.history = [];
+  content.portfolio = [];
+  content.sections = content.sections.filter(
+    (section) => !["contact_info", "history", "portfolio", "featured_products"].includes(section),
+  );
+  assets.hero_image = `${assets.asset_theme}/neutral-cover-fallback`;
+  assets.fallback_used = true;
+
+  try {
+    fs.writeFileSync(contentPath, JSON.stringify(content, null, 2));
+    fs.writeFileSync(assetsPath, JSON.stringify(assets, null, 2));
+    runExpectFailure("bash", [
+      "scripts/validate-generated-site.sh",
+      "generated-sites/COMPANY_RESULT_STYLE_FULL",
+      "harness/fixtures/company-intro-result-style-full.json",
+    ]);
+  } finally {
+    fs.writeFileSync(contentPath, originalContent);
+    fs.writeFileSync(assetsPath, originalAssets);
+    run("bash", [
+      "scripts/validate-generated-site.sh",
+      "generated-sites/COMPANY_RESULT_STYLE_FULL",
+      "harness/fixtures/company-intro-result-style-full.json",
+    ]);
+  }
 });
 
 runTest("fake claim failure reaches manual_required", () => {
