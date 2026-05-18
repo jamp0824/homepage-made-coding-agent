@@ -44,7 +44,7 @@ export default async function GeneratedHomepagePage({ params }: PageProps) {
   const isResultStyle = content.template_variant === "result_style_v1";
 
   if (isResultStyle) {
-    return renderResultStyleHomepage(content, site.result.status);
+    return renderResultStyleHomepage(content);
   }
 
   return (
@@ -136,7 +136,7 @@ export default async function GeneratedHomepagePage({ params }: PageProps) {
   );
 }
 
-function renderResultStyleHomepage(content: GeneratedContent, status: string) {
+function renderResultStyleHomepage(content: GeneratedContent) {
   const contactEntries = Object.entries(content.contact || {}).filter(([, value]) => Boolean(value));
   const tags = [...(content.tags || []), content.business_type].filter(Boolean);
   const productCount = content.products.length;
@@ -154,10 +154,6 @@ function renderResultStyleHomepage(content: GeneratedContent, status: string) {
 
       <div className="profile-action-row">
         <a className="profile-back-link" href="/">← 뒤로</a>
-        <div className="profile-actions" aria-label="페이지 액션">
-          <button type="button" aria-label="좋아요">♡</button>
-          <button type="button" aria-label="공유">↗</button>
-        </div>
       </div>
 
       <article className="profile-hero-card">
@@ -169,7 +165,6 @@ function renderResultStyleHomepage(content: GeneratedContent, status: string) {
           <p className="eyebrow">{content.industry || "회사소개중심형"}</p>
           <div className="profile-title-row">
             <h1>{content.company_name}</h1>
-            <span>{status}</span>
           </div>
           <p>{content.one_line_intro}</p>
           <div className="tag-row">

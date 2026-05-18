@@ -286,10 +286,6 @@ export default function GeneratedHomepage() {
       </header>
       <div className="profile-action-row">
         <a className="profile-back-link" href="/">← 뒤로</a>
-        <div className="profile-actions" aria-label="페이지 액션">
-          <button type="button" aria-label="좋아요">♡</button>
-          <button type="button" aria-label="공유">↗</button>
-        </div>
       </div>
       <article className="profile-hero-card">
         <section className="profile-cover" data-section="hero">
@@ -299,7 +295,6 @@ export default function GeneratedHomepage() {
           <p className="eyebrow">{content.industry}</p>
           <div className="profile-title-row">
             <h1>{content.company_name}</h1>
-            <span>generated</span>
           </div>
           <p>{content.one_line_intro}</p>
           <div className="tag-row">
@@ -479,10 +474,6 @@ function renderCompanyIntroHtml() {
       </header>
       <div class="profile-action-row">
         <a class="profile-back-link" href="/">← 뒤로</a>
-        <div class="profile-actions" aria-label="페이지 액션">
-          <button type="button" aria-label="좋아요">♡</button>
-          <button type="button" aria-label="공유">↗</button>
-        </div>
       </div>
       <article class="profile-hero-card">
         <section class="profile-cover" data-section="hero">${coverHtml}</section>
@@ -490,7 +481,6 @@ function renderCompanyIntroHtml() {
           <p class="eyebrow">${escapeHtml(content.industry)}</p>
           <div class="profile-title-row">
             <h1>${escapeHtml(content.company_name)}</h1>
-            <span>generated</span>
           </div>
           <p>${escapeHtml(content.one_line_intro)}</p>
           <div class="tag-row">${tagHtml}</div>
@@ -603,7 +593,7 @@ body {
 
 .profile-action-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   align-items: center;
   margin-bottom: 12px;
@@ -694,7 +684,7 @@ h1 {
 
 h2 {
   margin: 0 0 18px;
-  font-size: 24px;
+  font-size: 22px;
   letter-spacing: 0;
 }
 
