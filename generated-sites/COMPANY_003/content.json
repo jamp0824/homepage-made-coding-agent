@@ -3,11 +3,17 @@
   "company_id": "COMPANY_003",
   "homepage_type": "product",
   "template_id": "product_basic",
+  "template_variant": "basic",
   "company_name": "바른공구",
   "hero_title": "현장에 필요한 산업용 공구를 공급합니다",
   "one_line_intro": "현장에 필요한 산업용 공구를 공급합니다",
   "company_intro": "전동공구와 작업 소모품을 유통하며 산업 현장의 원활한 작업 환경을 지원합니다.",
   "business_summary": "도소매업 분야에서 산업용 공구 유통을 수행합니다.",
+  "industry": "도소매업",
+  "business_type": "산업용 공구 유통",
+  "tags": [],
+  "contact": {},
+  "cover_image_url": "",
   "core_strengths": [
     "산업 현장 중심 제품 구성",
     "전동공구와 소모품 통합 공급",
@@ -33,5 +39,27 @@
     "core_strengths",
     "product_area",
     "contact_cta"
+  ],
+  "section_manifest": [
+    {
+      "id": "hero",
+      "visible": true
+    },
+    {
+      "id": "company_intro",
+      "visible": true
+    },
+    {
+      "id": "core_strengths",
+      "visible": true
+    },
+    {
+      "id": "product_area",
+      "visible": true
+    },
+    {
+      "id": "contact_cta",
+      "visible": true
+    }
   ]
 }

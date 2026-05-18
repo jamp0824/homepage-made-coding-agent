@@ -559,9 +559,9 @@ body {
 }
 
 .profile-page {
-  width: min(100%, 920px);
+  width: min(calc(100% - 48px), 1080px);
   margin: 0 auto;
-  padding: 28px 20px 80px;
+  padding: 24px 0 72px;
 }
 
 .profile-nav {
@@ -636,7 +636,7 @@ body {
 
 .profile-cover {
   overflow: hidden;
-  height: 320px;
+  height: 340px;
   background: linear-gradient(135deg, #edf4ff, #f9fbff);
   border: 0;
 }
@@ -666,14 +666,15 @@ body {
 
 .profile-summary {
   margin-bottom: 0;
-  padding: 28px 96px 30px;
+  padding: 26px clamp(28px, 5.5vw, 72px) 30px;
   border: 0;
   border-top: 0;
 }
 
 .info-card,
 .contact-cta {
-  margin-top: 20px;
+  margin-top: 22px;
+  padding: 30px clamp(28px, 4.5vw, 56px);
   border-radius: 8px;
 }
 
@@ -693,7 +694,7 @@ h1 {
 
 h2 {
   margin: 0 0 18px;
-  font-size: 20px;
+  font-size: 24px;
   letter-spacing: 0;
 }
 
@@ -703,7 +704,7 @@ h3 {
 }
 
 p {
-  max-width: 760px;
+  max-width: 820px;
   margin: 0;
   color: var(--muted);
 }
@@ -754,7 +755,8 @@ p {
 }
 
 .profile-info-card .contact-list {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 28px;
 }
 
 .contact-list {
@@ -819,6 +821,10 @@ dd {
   background: #ffffff;
 }
 
+.profile-strength-card .strength-grid {
+  max-width: 760px;
+}
+
 .timeline {
   display: grid;
   gap: 14px;
@@ -869,11 +875,11 @@ dd {
 .product-card-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 14px;
 }
 
 .product-profile-card {
-  width: min(100%, 220px);
+  width: min(100%, 200px);
   padding: 0 !important;
   overflow: hidden;
 }
@@ -930,8 +936,16 @@ dd {
   color: rgba(255, 255, 255, 0.84);
 }
 
+.profile-contact-card {
+  padding-top: 34px;
+  padding-bottom: 34px;
+}
+
 @media (max-width: 720px) {
-  .profile-page { padding: 24px 14px 56px; }
+  .profile-page {
+    width: min(calc(100% - 28px), 1080px);
+    padding: 24px 0 56px;
+  }
   .profile-cover { height: 180px; }
   .profile-nav { grid-template-columns: 1fr; justify-items: start; }
   .profile-nav nav { justify-content: flex-start; }
@@ -941,6 +955,7 @@ dd {
   .contact-cta { padding: 22px 18px; }
   h1 { font-size: 26px; }
   .contact-list,
+  .profile-info-card .contact-list,
   .strength-grid,
   .card-grid { grid-template-columns: 1fr; }
   .timeline li { grid-template-columns: 1fr; }

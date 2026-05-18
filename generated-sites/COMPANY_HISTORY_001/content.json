@@ -3,11 +3,17 @@
   "company_id": "COMPANY_HISTORY_001",
   "homepage_type": "company_intro",
   "template_id": "company_intro_basic",
+  "template_variant": "result_style_v1",
   "company_name": "주식회사 기록샘플",
   "hero_title": "기업 업무 관리를 위한 소프트웨어",
   "one_line_intro": "기업 업무 관리를 위한 소프트웨어",
   "company_intro": "업무 관리 소프트웨어를 통해 기업의 반복 업무를 정리합니다.",
   "business_summary": "IT·소프트웨어 분야에서 소프트웨어 개발 및 공급을 수행합니다.",
+  "industry": "IT·소프트웨어",
+  "business_type": "소프트웨어 개발 및 공급",
+  "tags": [],
+  "contact": {},
+  "cover_image_url": "",
   "core_strengths": [
     "업무 흐름 정리",
     "운영 데이터 관리"
@@ -29,11 +35,41 @@
   "contact_cta": "주식회사 기록샘플의 사업과 서비스가 궁금하시다면 문의해 주세요.",
   "sections": [
     "hero",
+    "company_summary",
     "company_intro",
     "core_strengths",
-    "business_summary",
     "history",
     "portfolio",
     "contact_cta"
+  ],
+  "section_manifest": [
+    {
+      "id": "hero",
+      "visible": true
+    },
+    {
+      "id": "company_summary",
+      "visible": true
+    },
+    {
+      "id": "company_intro",
+      "visible": true
+    },
+    {
+      "id": "core_strengths",
+      "visible": true
+    },
+    {
+      "id": "history",
+      "visible": true
+    },
+    {
+      "id": "portfolio",
+      "visible": true
+    },
+    {
+      "id": "contact_cta",
+      "visible": true
+    }
   ]
 }

@@ -7,80 +7,59 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="site-header">
-      <a class="brand" href="#top">주식회사 기록샘플</a>
-      <nav aria-label="주요 섹션">
-        <a href="#intro">회사 소개</a>
-        <a href="#strengths">핵심 강점</a>
-        <a href="#contact">문의</a>
-      </nav>
-    </header>
-
-    <main id="top">
-      <section class="hero" data-section="hero">
-        <div class="eyebrow">회사소개중심형 · IT·소프트웨어</div>
-        <h1>기업 업무 관리를 위한 소프트웨어</h1>
-        <p>기업 업무 관리를 위한 소프트웨어</p>
-      </section>
-
-      <section id="intro" class="section" data-section="company_intro">
-        <div class="section-label">Company</div>
-        <h2>회사 소개</h2>
-        <p>업무 관리 소프트웨어를 통해 기업의 반복 업무를 정리합니다.</p>
-        <dl class="facts">
-          <div>
-            <dt>업종</dt>
-            <dd>IT·소프트웨어</dd>
+    <main class="profile-page" data-template="company_intro_basic" data-template-variant="result_style_v1" data-asset-theme="it_software">
+      <header class="profile-nav" aria-label="생성 홈페이지 탐색">
+        <div class="profile-brand-mark" aria-hidden="true">H</div>
+        <nav aria-label="페이지 섹션">
+          <a href="#company">기업</a>
+          
+          <a href="#contact">문의</a>
+        </nav>
+      </header>
+      <div class="profile-action-row">
+        <a class="profile-back-link" href="/">← 뒤로</a>
+        <div class="profile-actions" aria-label="페이지 액션">
+          <button type="button" aria-label="좋아요">♡</button>
+          <button type="button" aria-label="공유">↗</button>
+        </div>
+      </div>
+      <article class="profile-hero-card">
+        <section class="profile-cover" data-section="hero"><div class="cover-fallback" aria-hidden="true"></div></section>
+        <section class="profile-summary" data-section="company_summary">
+          <p class="eyebrow">IT·소프트웨어</p>
+          <div class="profile-title-row">
+            <h1>주식회사 기록샘플</h1>
+            <span>generated</span>
           </div>
-          <div>
-            <dt>업태</dt>
-            <dd>소프트웨어 개발 및 공급</dd>
+          <p>기업 업무 관리를 위한 소프트웨어</p>
+          <div class="tag-row"><span>소프트웨어 개발 및 공급</span></div>
+          <div class="profile-meta-row">
+            <span>회사소개중심형</span>
+            
           </div>
-        </dl>
-      </section>
-
-      <section id="strengths" class="section" data-section="core_strengths">
-        <div class="section-label">Strengths</div>
+        </section>
+      </article>
+      
+      <section id="company" class="info-card" data-section="company_intro"><h2>기업 소개</h2><p>업무 관리 소프트웨어를 통해 기업의 반복 업무를 정리합니다.</p></section>
+      <section class="info-card profile-strength-card" data-section="core_strengths">
         <h2>핵심 강점</h2>
-        <ul class="strength-list">
-          <li>업무 흐름 정리</li>
-<li>운영 데이터 관리</li>
-        </ul>
+        <ul class="strength-grid"><li>업무 흐름 정리</li>
+<li>운영 데이터 관리</li></ul>
       </section>
-
-      <section class="section" data-section="business_summary">
-        <div class="section-label">Business</div>
-        <h2>사업 요약</h2>
-        <p>IT·소프트웨어 분야에서 소프트웨어 개발 및 공급을 수행합니다.</p>
-      </section>
-
-      <section class="section" data-section="history">
-        <div class="section-label">History</div>
+      <section class="info-card" data-section="history">
         <h2>연혁</h2>
-        <div class="item-grid">
-          
-          <article class="item-card">
-            <h3>2025</h3>
-            <p>업무 관리 소프트웨어 공급을 시작했습니다.</p>
-          </article>
-        </div>
+        <ol class="timeline">
+          <li><strong>2025</strong><span>업무 관리 소프트웨어 공급을 시작했습니다.</span></li>
+        </ol>
       </section>
-      <section class="section" data-section="portfolio">
-        <div class="section-label">Portfolio</div>
+      <section class="info-card" data-section="portfolio">
         <h2>포트폴리오</h2>
-        <div class="item-grid">
-          
-          <article class="item-card">
-            <h3>업무 관리 시스템 구축</h3>
-            <p>기업 내부 업무 흐름을 정리하는 시스템을 구축했습니다.</p>
-          </article>
+        <div class="card-grid">
+          <article class="portfolio-card"><span class="card-icon" aria-hidden="true">□</span><h3>업무 관리 시스템 구축</h3><p>기업 내부 업무 흐름을 정리하는 시스템을 구축했습니다.</p></article>
         </div>
       </section>
-
-      <section id="contact" class="contact" data-section="contact_cta">
-        <h2>문의하기</h2>
-        <p>주식회사 기록샘플의 사업과 서비스가 궁금하시다면 문의해 주세요.</p>
-      </section>
+      
+      <section id="contact" class="contact-cta profile-contact-card" data-section="contact_cta"><h2>문의하기</h2><p>주식회사 기록샘플의 사업과 서비스가 궁금하시다면 문의해 주세요.</p></section>
     </main>
   </body>
 </html>

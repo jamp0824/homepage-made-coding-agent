@@ -5,6 +5,7 @@ node_modules/
 .next/
 .next-build/
 .next-build-test/
+.next-build.lock/
 frontend/.next/
 frontend/.next-build/
 out/
@@ -27,6 +28,16 @@ Thumbs.db
 # Harness runtime scratch files
 harness/tmp/
 
+# Runtime job queue outputs
+jobs/**/*.json
+jobs/**/*.md
+!jobs/**/.gitkeep
+
+# E2E runtime reports
+reports/e2e/*.json
+reports/e2e/*.md
+
 # Generated runtime/test outputs
 generated-sites/UI_*/
 generated-sites/COMPANY_GOOSE_MISSING_CLI*/
+generated-sites/COMPANY_RESULT_STYLE_*/

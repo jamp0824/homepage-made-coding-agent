@@ -1,6 +1,6 @@
 {
   "asset_theme": "manufacturing",
-  "hero_image": "manufacturing/hero-placeholder",
+  "hero_image": "manufacturing/neutral-cover-fallback",
   "section_images": {
     "company_intro": "manufacturing/company-intro-placeholder",
     "core_strengths": "manufacturing/strengths-placeholder"

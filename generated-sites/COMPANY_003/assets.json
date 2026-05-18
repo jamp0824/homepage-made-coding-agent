@@ -1,6 +1,6 @@
 {
   "asset_theme": "commerce",
-  "hero_image": "commerce/hero-placeholder",
+  "hero_image": "commerce/neutral-cover-fallback",
   "section_images": {
     "company_intro": "commerce/company-intro-placeholder",
     "core_strengths": "commerce/strengths-placeholder"

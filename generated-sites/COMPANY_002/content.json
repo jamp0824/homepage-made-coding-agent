@@ -3,11 +3,17 @@
   "company_id": "COMPANY_002",
   "homepage_type": "product",
   "template_id": "product_basic",
+  "template_variant": "basic",
   "company_name": "동행패키징",
   "hero_title": "소상공인을 위한 친환경 포장재 파트너",
   "one_line_intro": "소상공인을 위한 친환경 포장재 파트너",
   "company_intro": "친환경 종이 포장재를 제조하고 공급하여 소상공인의 포장 업무를 지원합니다.",
   "business_summary": "제조업 분야에서 포장재 제조 및 도소매을 수행합니다.",
+  "industry": "제조업",
+  "business_type": "포장재 제조 및 도소매",
+  "tags": [],
+  "contact": {},
+  "cover_image_url": "",
   "core_strengths": [
     "친환경 종이 소재 활용",
     "소상공인 맞춤 공급",
@@ -24,5 +30,27 @@
     "core_strengths",
     "product_registration_cta",
     "contact_cta"
+  ],
+  "section_manifest": [
+    {
+      "id": "hero",
+      "visible": true
+    },
+    {
+      "id": "company_intro",
+      "visible": true
+    },
+    {
+      "id": "core_strengths",
+      "visible": true
+    },
+    {
+      "id": "product_registration_cta",
+      "visible": true
+    },
+    {
+      "id": "contact_cta",
+      "visible": true
+    }
   ]
 }
