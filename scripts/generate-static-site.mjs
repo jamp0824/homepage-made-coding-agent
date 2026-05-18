@@ -272,25 +272,48 @@ const contactLabels = {
 export default function GeneratedHomepage() {
   const contactEntries = Object.entries(content.contact || {});
   const hasCoverImage = Boolean(content.cover_image_url);
+  const productCount = content.products.length;
 
   return (
     <main className="profile-page" data-template={content.template_id} data-template-variant={content.template_variant} data-asset-theme={assets.asset_theme}>
-      <section className="profile-cover" data-section="hero">
-        {hasCoverImage ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
-      </section>
-      <section className="profile-summary" data-section="company_summary">
-        <div>
+      <header className="profile-nav" aria-label="생성 홈페이지 탐색">
+        <div className="profile-brand-mark" aria-hidden="true">H</div>
+        <nav aria-label="페이지 섹션">
+          <a href="#company">기업</a>
+          {productCount > 0 ? <a href="#products">상품</a> : null}
+          <a href="#contact">문의</a>
+        </nav>
+      </header>
+      <div className="profile-action-row">
+        <a className="profile-back-link" href="/">← 뒤로</a>
+        <div className="profile-actions" aria-label="페이지 액션">
+          <button type="button" aria-label="좋아요">♡</button>
+          <button type="button" aria-label="공유">↗</button>
+        </div>
+      </div>
+      <article className="profile-hero-card">
+        <section className="profile-cover" data-section="hero">
+          {hasCoverImage ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
+        </section>
+        <section className="profile-summary" data-section="company_summary">
           <p className="eyebrow">{content.industry}</p>
-          <h1>{content.company_name}</h1>
+          <div className="profile-title-row">
+            <h1>{content.company_name}</h1>
+            <span>generated</span>
+          </div>
           <p>{content.one_line_intro}</p>
           <div className="tag-row">
             {content.tags.map((tag) => <span key={tag}>{tag}</span>)}
             <span>{content.business_type}</span>
           </div>
-        </div>
-      </section>
+          <div className="profile-meta-row">
+            <span>회사소개중심형</span>
+            {productCount > 0 ? <span>상품 {productCount}개</span> : null}
+          </div>
+        </section>
+      </article>
       {contactEntries.length > 0 ? (
-        <section className="info-card" data-section="contact_info">
+        <section className="info-card profile-info-card" data-section="contact_info">
           <h2>기업 정보</h2>
           <dl className="contact-list">
             {contactEntries.map(([key, value]) => (
@@ -302,11 +325,11 @@ export default function GeneratedHomepage() {
           </dl>
         </section>
       ) : null}
-      <section className="info-card" data-section="company_intro">
+      <section id="company" className="info-card" data-section="company_intro">
         <h2>기업 소개</h2>
         <p>{content.company_intro}</p>
       </section>
-      <section className="info-card" data-section="core_strengths">
+      <section className="info-card profile-strength-card" data-section="core_strengths">
         <h2>핵심 강점</h2>
         <ul className="strength-grid">
           {content.core_strengths.map((item) => <li key={item}>{item}</li>)}
@@ -324,24 +347,27 @@ export default function GeneratedHomepage() {
         <section className="info-card" data-section="portfolio">
           <h2>포트폴리오</h2>
           <div className="card-grid">
-            {content.portfolio.map((item) => <article key={item.title || item.description}><h3>{item.title}</h3><p>{item.description}</p></article>)}
+            {content.portfolio.map((item) => <article className="portfolio-card" key={item.title || item.description}><span className="card-icon" aria-hidden="true">□</span><h3>{item.title}</h3><p>{item.description}</p></article>)}
           </div>
         </section>
       ) : null}
       {content.products.length > 0 ? (
-        <section className="info-card" data-section="featured_products">
-          <h2>주요 상품</h2>
-          <div className="product-grid">
+        <section id="products" className="info-card" data-section="featured_products">
+          <h2>주요 상품 <span className="count-badge">{productCount}</span></h2>
+          <div className="product-card-list">
             {content.products.map((product) => (
-              <article key={product.name}>
-                {product.image_url ? <img src={product.image_url} alt="" /> : null}
+              <article className="product-profile-card" key={product.name}>
+                <div className="product-image-frame">
+                  {product.image_url ? <img src={product.image_url} alt="" /> : <div className="product-image-fallback" aria-hidden="true" />}
+                </div>
                 <div><h3>{product.name}</h3><p>{product.description}</p></div>
+                <span className="product-cta">견적요청</span>
               </article>
             ))}
           </div>
         </section>
       ) : null}
-      <section className="contact-cta" data-section="contact_cta">
+      <section id="contact" className="contact-cta profile-contact-card" data-section="contact_cta">
         <h2>문의하기</h2>
         <p>{content.contact_cta}</p>
       </section>
@@ -372,6 +398,7 @@ export default function GeneratedHomepage() {
 }
 
 function renderCompanyIntroHtml() {
+  const productCount = products.length;
   const tagHtml = [...tags, request.business_type]
     .filter(Boolean)
     .map((tag) => `<span>${escapeHtml(tag)}</span>`)
@@ -381,7 +408,7 @@ function renderCompanyIntroHtml() {
     : `<div class="cover-fallback" aria-hidden="true"></div>`;
   const contactHtml =
     contactEntries.length > 0
-      ? `<section class="info-card" data-section="contact_info">
+      ? `<section class="info-card profile-info-card" data-section="contact_info">
         <h2>기업 정보</h2>
         <dl class="contact-list">
           ${contactEntries
@@ -407,21 +434,24 @@ function renderCompanyIntroHtml() {
         <h2>포트폴리오</h2>
         <div class="card-grid">
           ${portfolio
-            .map((item) => `<article><h3>${escapeHtml(item.title || "")}</h3><p>${escapeHtml(item.description || "")}</p></article>`)
+            .map((item) => `<article class="portfolio-card"><span class="card-icon" aria-hidden="true">□</span><h3>${escapeHtml(item.title || "")}</h3><p>${escapeHtml(item.description || "")}</p></article>`)
             .join("\n")}
         </div>
       </section>`
       : "";
   const productsHtml =
     products.length > 0
-      ? `<section class="info-card" data-section="featured_products">
-        <h2>주요 상품</h2>
-        <div class="product-grid">
+      ? `<section id="products" class="info-card" data-section="featured_products">
+        <h2>주요 상품 <span class="count-badge">${productCount}</span></h2>
+        <div class="product-card-list">
           ${products
             .map(
-              (product) => `<article>
-                ${product.image_url ? `<img src="${escapeHtml(product.image_url)}" alt="" />` : ""}
+              (product) => `<article class="product-profile-card">
+                <div class="product-image-frame">
+                  ${product.image_url ? `<img src="${escapeHtml(product.image_url)}" alt="" />` : `<div class="product-image-fallback" aria-hidden="true"></div>`}
+                </div>
                 <div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description || "")}</p></div>
+                <span class="product-cta">견적요청</span>
               </article>`,
             )
             .join("\n")}
@@ -439,23 +469,47 @@ function renderCompanyIntroHtml() {
   </head>
   <body>
     <main class="profile-page" data-template="${templateId}" data-template-variant="${RESULT_STYLE_VARIANT}" data-asset-theme="${escapeHtml(assetTheme)}">
-      <section class="profile-cover" data-section="hero">${coverHtml}</section>
-      <section class="profile-summary" data-section="company_summary">
-        <p class="eyebrow">${escapeHtml(content.industry)}</p>
-        <h1>${escapeHtml(content.company_name)}</h1>
-        <p>${escapeHtml(content.one_line_intro)}</p>
-        <div class="tag-row">${tagHtml}</div>
-      </section>
+      <header class="profile-nav" aria-label="생성 홈페이지 탐색">
+        <div class="profile-brand-mark" aria-hidden="true">H</div>
+        <nav aria-label="페이지 섹션">
+          <a href="#company">기업</a>
+          ${productCount > 0 ? `<a href="#products">상품</a>` : ""}
+          <a href="#contact">문의</a>
+        </nav>
+      </header>
+      <div class="profile-action-row">
+        <a class="profile-back-link" href="/">← 뒤로</a>
+        <div class="profile-actions" aria-label="페이지 액션">
+          <button type="button" aria-label="좋아요">♡</button>
+          <button type="button" aria-label="공유">↗</button>
+        </div>
+      </div>
+      <article class="profile-hero-card">
+        <section class="profile-cover" data-section="hero">${coverHtml}</section>
+        <section class="profile-summary" data-section="company_summary">
+          <p class="eyebrow">${escapeHtml(content.industry)}</p>
+          <div class="profile-title-row">
+            <h1>${escapeHtml(content.company_name)}</h1>
+            <span>generated</span>
+          </div>
+          <p>${escapeHtml(content.one_line_intro)}</p>
+          <div class="tag-row">${tagHtml}</div>
+          <div class="profile-meta-row">
+            <span>회사소개중심형</span>
+            ${productCount > 0 ? `<span>상품 ${productCount}개</span>` : ""}
+          </div>
+        </section>
+      </article>
       ${contactHtml}
-      <section class="info-card" data-section="company_intro"><h2>기업 소개</h2><p>${escapeHtml(content.company_intro)}</p></section>
-      <section class="info-card" data-section="core_strengths">
+      <section id="company" class="info-card" data-section="company_intro"><h2>기업 소개</h2><p>${escapeHtml(content.company_intro)}</p></section>
+      <section class="info-card profile-strength-card" data-section="core_strengths">
         <h2>핵심 강점</h2>
         <ul class="strength-grid">${coreStrengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n")}</ul>
       </section>
       ${historyHtml}
       ${portfolioHtml}
       ${productsHtml}
-      <section class="contact-cta" data-section="contact_cta"><h2>문의하기</h2><p>${escapeHtml(content.contact_cta)}</p></section>
+      <section id="contact" class="contact-cta profile-contact-card" data-section="contact_cta"><h2>문의하기</h2><p>${escapeHtml(content.contact_cta)}</p></section>
     </main>
   </body>
 </html>
@@ -491,6 +545,7 @@ function renderResultStyleCss() {
   --soft: #f6f8fb;
   --primary: #4f7fe8;
   --primary-soft: #edf4ff;
+  --primary-dark: #264f9d;
 }
 
 * { box-sizing: border-box; }
@@ -504,17 +559,86 @@ body {
 }
 
 .profile-page {
-  width: min(100%, 1040px);
+  width: min(100%, 920px);
   margin: 0 auto;
-  padding: 48px 20px 80px;
+  padding: 28px 20px 80px;
+}
+
+.profile-nav {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: center;
+  min-height: 52px;
+  margin-bottom: 18px;
+  padding: 0 10px;
+}
+
+.profile-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: #ffffff;
+  background: var(--primary);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.profile-nav nav {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+
+.profile-nav a,
+.profile-back-link {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.profile-action-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 12px;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.profile-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #ffffff;
+  font: inherit;
+}
+
+.profile-hero-card {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--line);
 }
 
 .profile-cover {
   overflow: hidden;
-  height: 280px;
+  height: 320px;
   background: linear-gradient(135deg, #edf4ff, #f9fbff);
-  border: 1px solid var(--line);
-  border-radius: 8px 8px 0 0;
+  border: 0;
 }
 
 .profile-cover img,
@@ -541,9 +665,10 @@ body {
 }
 
 .profile-summary {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  padding: 28px 96px 30px;
+  border: 0;
   border-top: 0;
-  border-radius: 0 0 8px 8px;
 }
 
 .info-card,
@@ -560,8 +685,8 @@ body {
 }
 
 h1 {
-  margin: 0 0 10px;
-  font-size: 34px;
+  margin: 0;
+  font-size: 22px;
   line-height: 1.25;
   letter-spacing: 0;
 }
@@ -590,12 +715,46 @@ p {
   margin-top: 20px;
 }
 
+.profile-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.profile-title-row span,
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.profile-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .tag-row span {
   padding: 6px 10px;
   color: #4d5f78;
   background: var(--primary-soft);
   border-radius: 6px;
   font-size: 13px;
+}
+
+.profile-info-card .contact-list {
+  grid-template-columns: 1fr;
 }
 
 .contact-list {
@@ -608,11 +767,17 @@ p {
 .contact-list div,
 .strength-grid li,
 .card-grid article,
-.product-grid article {
+.product-card-list article {
   padding: 16px;
   background: #fbfcff;
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+.profile-info-card .contact-list div {
+  padding: 0;
+  background: transparent;
+  border: 0;
 }
 
 dt {
@@ -644,6 +809,16 @@ dd {
   border-left: 4px solid var(--primary);
 }
 
+.profile-strength-card {
+  background: transparent;
+  border: 0;
+  padding-top: 12px;
+}
+
+.profile-strength-card .strength-grid li {
+  background: #ffffff;
+}
+
 .timeline {
   display: grid;
   gap: 14px;
@@ -665,25 +840,90 @@ dd {
   border-radius: 6px;
 }
 
-.card-grid,
-.product-grid {
+.card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.product-grid img {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
+.portfolio-card {
+  position: relative;
+  padding-left: 64px !important;
+}
+
+.card-icon {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--primary);
+  background: var(--primary-soft);
   border-radius: 6px;
-  margin-bottom: 12px;
+  font-weight: 800;
+}
+
+.product-card-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.product-profile-card {
+  width: min(100%, 220px);
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.product-profile-card h3,
+.product-profile-card p,
+.product-profile-card .product-cta {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+
+.product-profile-card h3 {
+  margin-top: 14px;
+}
+
+.product-profile-card p {
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.product-image-frame {
+  background: var(--primary-soft);
+}
+
+.product-profile-card img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  margin-bottom: 0;
+}
+
+.product-image-fallback {
+  aspect-ratio: 1 / 1;
+  background:
+    linear-gradient(135deg, rgba(79, 127, 232, 0.16), rgba(18, 163, 127, 0.1)),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.52) 0 10px, rgba(255,255,255,0.2) 10px 20px);
+}
+
+.product-cta {
+  display: inline-flex;
+  margin-bottom: 16px;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .contact-cta {
   color: #ffffff;
-  background: #264f9d;
-  border-color: #264f9d;
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
 }
 
 .contact-cta p {
@@ -693,15 +933,18 @@ dd {
 @media (max-width: 720px) {
   .profile-page { padding: 24px 14px 56px; }
   .profile-cover { height: 180px; }
+  .profile-nav { grid-template-columns: 1fr; justify-items: start; }
+  .profile-nav nav { justify-content: flex-start; }
+  .profile-action-row { padding: 0; }
   .profile-summary,
   .info-card,
   .contact-cta { padding: 22px 18px; }
   h1 { font-size: 26px; }
   .contact-list,
   .strength-grid,
-  .card-grid,
-  .product-grid { grid-template-columns: 1fr; }
+  .card-grid { grid-template-columns: 1fr; }
   .timeline li { grid-template-columns: 1fr; }
+  .profile-strength-card { padding-left: 0; padding-right: 0; }
 }
 `;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { useMemo, useState } from "react";
 
 type GenerateResult = {
   ok: boolean;
@@ -24,6 +24,21 @@ type GenerateResult = {
   errorSummary?: string;
 };
 
+type StepKey = "start" | "type" | "info" | "ai" | "done";
+
+const steps: Array<{
+  key: StepKey;
+  label: string;
+  progressLabel: string;
+  progress: number;
+}> = [
+  { key: "start", label: "시작", progressLabel: "", progress: 0 },
+  { key: "type", label: "홈페이지 형식", progressLabel: "Step 1 / 4", progress: 25 },
+  { key: "info", label: "기업 정보", progressLabel: "Step 2 / 4", progress: 50 },
+  { key: "ai", label: "설정", progressLabel: "Step 3 / 4", progress: 75 },
+  { key: "done", label: "완료", progressLabel: "Step 4 (완료)", progress: 100 },
+];
+
 const initialForm = {
   homepageType: "company_intro",
   companyName: "주식회사 테스트홈",
@@ -32,7 +47,7 @@ const initialForm = {
   mainBusinessDescription: "기업의 반복 업무를 줄이는 업무 자동화 솔루션을 개발하고 공급합니다.",
   oneLineIntro: "반복 업무를 줄이는 자동화 솔루션",
   companyIntro: "주식회사 테스트홈은 기업의 업무 흐름을 분석하고 자동화 시스템을 구축하는 회사입니다.",
-  coreStrengths: "업무 자동화\n데이터 관리\n기업 맞춤 구축",
+  coreStrengths: "업무 자동화\n데이터 관리\n기업 맞춤 구축\n빠른 도입 지원",
   tags: "업무 자동화\n데이터 관리\n기업 맞춤",
   coverImageUrl: "",
   contactAddress: "서울특별시 강남구 테스트로 10",
@@ -48,13 +63,28 @@ const initialForm = {
 };
 
 export default function TestBuilderForm() {
+  const [activeStep, setActiveStep] = useState<StepKey>("start");
   const [form, setForm] = useState(initialForm);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const current = useMemo(
+    () => steps.find((step) => step.key === activeStep) ?? steps[0],
+    [activeStep],
+  );
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function updateField(field: keyof typeof form, value: string) {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }));
+  }
+
+  function updateCoreStrength(index: number, value: string) {
+    const strengths = form.coreStrengths.split("\n");
+    strengths[index] = value;
+    updateField("coreStrengths", strengths.join("\n"));
+  }
+
+  async function generateHomepage() {
+    setActiveStep("done");
     setIsGenerating(true);
     setResult(null);
     setError(null);
@@ -79,275 +109,333 @@ export default function TestBuilderForm() {
     }
   }
 
-  function updateField(field: keyof typeof form, value: string) {
-    setForm((current) => ({ ...current, [field]: value }));
-  }
+  return (
+    <div className="ref-shell test-builder-flow">
+      <header className="ref-header">
+        <div className="ref-brand">
+          <span className="ref-brand-icon">▣</span>
+          <span>IBK BOX</span>
+        </div>
+        <nav className="ref-nav" aria-label="builder navigation">
+          <button>홈</button>
+          <button>기업</button>
+          <button>상품</button>
+          <button>이벤트</button>
+        </nav>
+        <button className="ref-menu" aria-label="menu">
+          ☰
+        </button>
+      </header>
+
+      {activeStep !== "start" ? (
+        <div className="ref-progress-wrap">
+          <div className="ref-progress-head">
+            <span>{current.progressLabel}</span>
+            <strong>{current.label}</strong>
+          </div>
+          <div className="ref-progress-track">
+            <div className="ref-progress-bar" style={{ width: `${current.progress}%` }} />
+          </div>
+        </div>
+      ) : null}
+
+      <main className="ref-main">
+        {activeStep === "start" ? <StartStep setActiveStep={setActiveStep} /> : null}
+        {activeStep === "type" ? <TypeStep setActiveStep={setActiveStep} /> : null}
+        {activeStep === "info" ? (
+          <InfoStep form={form} setActiveStep={setActiveStep} updateField={updateField} />
+        ) : null}
+        {activeStep === "ai" ? (
+          <AiStep
+            form={form}
+            generateHomepage={generateHomepage}
+            setActiveStep={setActiveStep}
+            updateCoreStrength={updateCoreStrength}
+            updateField={updateField}
+          />
+        ) : null}
+        {activeStep === "done" ? (
+          <DoneStep
+            error={error}
+            isGenerating={isGenerating}
+            result={result}
+            restart={() => {
+              setResult(null);
+              setError(null);
+              setActiveStep("type");
+            }}
+          />
+        ) : null}
+      </main>
+    </div>
+  );
+}
+function StartStep({ setActiveStep }: { setActiveStep: (step: StepKey) => void }) {
+  return (
+    <section className="ref-center ref-start">
+      <div className="ref-hero-icon">✧</div>
+      <h1>무료로 기업 홈페이지를 만들어보세요</h1>
+      <p>AI가 도와주는 간단한 단계로 전문적인 기업 홈페이지를 만들 수 있습니다.</p>
+      <p>마지막 완료 버튼을 누르면 실제 Goose 생성과 검증이 실행됩니다.</p>
+
+      <div className="ref-benefits">
+        <Benefit icon="◷" title="자동 생성" text="입력 완료 후 request JSON을 만들고 Goose를 실행합니다" />
+        <Benefit icon="✦" title="템플릿 기반" text="회사소개중심형 result-style 템플릿 안에서 생성합니다" />
+        <Benefit icon="✓" title="검증 후 공개" text="validation/build 통과 시 생성된 홈페이지를 바로 확인합니다" />
+      </div>
+
+      <button className="ref-primary-button" onClick={() => setActiveStep("type")}>
+        시작하기
+      </button>
+      <p className="ref-footnote">테스트 환경에서는 Goose provider 설정과 quota 상태에 따라 실패할 수 있습니다</p>
+    </section>
+  );
+}
+
+function TypeStep({ setActiveStep }: { setActiveStep: (step: StepKey) => void }) {
+  return (
+    <section className="ref-panel">
+      <div className="ref-title">
+        <h1>홈페이지 형식을 선택해주세요</h1>
+        <p>현재 테스트 생성은 회사소개중심형으로 고정되어 있습니다</p>
+      </div>
+
+      <div className="ref-choice-list">
+        <button className="ref-choice-card ref-choice-card-disabled" disabled>
+          <span className="ref-choice-icon">◇</span>
+          <span>
+            <strong>상품중심형</strong>
+            <small>등록한 상품을 중심으로 보여주는 홈페이지입니다.</small>
+            <em>
+              <span>상품 갤러리</span>
+              <span>견적/구매 강조</span>
+              <span>추후 지원</span>
+            </em>
+          </span>
+        </button>
+        <button className="ref-choice-card ref-choice-card-selected" disabled>
+          <span className="ref-choice-icon">▤</span>
+          <span>
+            <strong>회사소개중심형</strong>
+            <small>회사 소개와 포트폴리오를 중심으로 보여주는 홈페이지입니다.</small>
+            <em>
+              <span>회사 스토리</span>
+              <span>포트폴리오</span>
+              <span>연혁</span>
+            </em>
+          </span>
+        </button>
+      </div>
+
+      <StepButtons back={() => setActiveStep("start")} next={() => setActiveStep("info")} />
+    </section>
+  );
+}
+
+function InfoStep({
+  form,
+  setActiveStep,
+  updateField,
+}: {
+  form: typeof initialForm;
+  setActiveStep: (step: StepKey) => void;
+  updateField: (field: keyof typeof initialForm, value: string) => void;
+}) {
+  return (
+    <section className="ref-panel">
+      <div className="ref-title">
+        <h1>기업 정보를 입력해주세요</h1>
+        <p>AI가 이 정보를 바탕으로 홈페이지를 만듭니다</p>
+      </div>
+
+      <div className="ref-form">
+        <Field
+          label="회사명"
+          value={form.companyName}
+          onChange={(value) => updateField("companyName", value)}
+        />
+        <Field
+          helper="등록된 기업 정보에서 가져온 정보이며 수정할 수 있습니다"
+          label="업종"
+          value={form.industry}
+          onChange={(value) => updateField("industry", value)}
+        />
+        <Field
+          helper="등록된 기업 정보에서 가져온 정보이며 수정할 수 있습니다"
+          label="업태"
+          value={form.businessType}
+          onChange={(value) => updateField("businessType", value)}
+        />
+        <label className="ref-field">
+          <span>
+            주요 사업 내용 <b>*</b>
+          </span>
+          <textarea
+            value={form.mainBusinessDescription}
+            onChange={(event) => updateField("mainBusinessDescription", event.target.value)}
+          />
+          <small>최소 10자 이상 입력해주세요 ({Math.min(form.mainBusinessDescription.length, 10)}/10)</small>
+        </label>
+      </div>
+
+      <p className="ref-blue-note">
+        입력하신 정보는 AI가 홈페이지 내용을 생성할 때 참고됩니다. 생성 후 결과 화면에서 바로 확인할 수 있습니다.
+      </p>
+
+      <StepButtons back={() => setActiveStep("type")} next={() => setActiveStep("ai")} />
+    </section>
+  );
+}
+
+function AiStep({
+  form,
+  generateHomepage,
+  setActiveStep,
+  updateCoreStrength,
+  updateField,
+}: {
+  form: typeof initialForm;
+  generateHomepage: () => void;
+  setActiveStep: (step: StepKey) => void;
+  updateCoreStrength: (index: number, value: string) => void;
+  updateField: (field: keyof typeof initialForm, value: string) => void;
+}) {
+  const strengths = form.coreStrengths.split("\n");
 
   return (
-    <main className="index-page test-builder-page">
-      <section className="index-hero compact-hero">
-        <p className="eyebrow">Test Input Flow</p>
-        <h1>정보 입력 후 홈페이지 자동 생성</h1>
-        <p>
-          테스트용 입력 화면입니다. 완료 버튼을 누르면 request JSON이 만들어지고 기존 builder가
-          실행된 뒤 생성된 홈페이지 URL을 보여줍니다.
-        </p>
-      </section>
+    <section className="ref-panel">
+      <div className="ref-title">
+        <h1>홈페이지 내용을 설정해주세요</h1>
+        <p>입력한 내용만 템플릿에 반영되고, 없는 정보는 만들어내지 않습니다</p>
+      </div>
 
-      <form className="test-builder-form" onSubmit={handleSubmit}>
-        <section className="form-section" aria-label="생성 방식">
-          <div>
-            <p className="section-label">Generation</p>
-            <h2>생성 방식</h2>
-          </div>
-          <div className="segmented-control">
-            <label>
-              <input
-                checked={form.generationMode === "goose"}
-                name="generationMode"
-                onChange={() => updateField("generationMode", "goose")}
-                type="radio"
-              />
-              <span>Goose 필수</span>
-            </label>
-            <label>
-              <input
-                checked={form.generationMode === "auto"}
-                name="generationMode"
-                onChange={() => updateField("generationMode", "auto")}
-                type="radio"
-              />
-              <span>Goose 우선</span>
-            </label>
-          </div>
-        </section>
+      <div className="ref-section-card">
+        <div className="ref-section-head">
+          <span>한 줄 소개</span>
+          <small>표시</small>
+        </div>
+        <input
+          aria-label="한 줄 소개"
+          value={form.oneLineIntro}
+          onChange={(event) => updateField("oneLineIntro", event.target.value)}
+        />
+      </div>
 
-        <section className="form-section" aria-label="회사 기본 정보">
-          <div>
-            <p className="section-label">Company</p>
-            <h2>기본 정보</h2>
-          </div>
-          <div className="form-grid">
-            <label>
-              홈페이지 유형
-              <select
-                value={form.homepageType}
-                onChange={(event) => updateField("homepageType", event.target.value)}
-              >
-                <option value="company_intro">회사소개중심형</option>
-                <option value="product">상품중심형</option>
-              </select>
-            </label>
-            <label>
-              회사명
+      <div className="ref-section-card">
+        <span>기업 소개</span>
+        <textarea
+          aria-label="기업 소개"
+          value={form.companyIntro}
+          onChange={(event) => updateField("companyIntro", event.target.value)}
+        />
+      </div>
+
+      <div className="ref-section-card">
+        <div className="ref-section-head">
+          <span>핵심 강점</span>
+          <small>표시</small>
+        </div>
+        <ul className="ref-strength-fields">
+          {[0, 1, 2, 3].map((index) => (
+            <li key={index}>
               <input
-                value={form.companyName}
-                onChange={(event) => updateField("companyName", event.target.value)}
+                aria-label={`핵심 강점 ${index + 1}`}
+                value={strengths[index] ?? ""}
+                onChange={(event) => updateCoreStrength(index, event.target.value)}
               />
-            </label>
-            <label>
-              업종
-              <input
-                value={form.industry}
-                onChange={(event) => updateField("industry", event.target.value)}
-              />
-            </label>
-            <label>
-              사업 유형
-              <input
-                value={form.businessType}
-                onChange={(event) => updateField("businessType", event.target.value)}
-              />
-            </label>
-          </div>
-          <label>
-            주요 사업 설명
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <details className="ref-section-card">
+        <summary>추가 정보</summary>
+        <div className="ref-form ref-extra-form">
+          <Field label="태그" value={form.tags} onChange={(value) => updateField("tags", value)} />
+          <Field
+            label="커버 이미지 URL"
+            value={form.coverImageUrl}
+            onChange={(value) => updateField("coverImageUrl", value)}
+          />
+          <Field
+            label="연락처"
+            value={form.contactPhone}
+            onChange={(value) => updateField("contactPhone", value)}
+          />
+          <Field
+            label="이메일"
+            value={form.contactEmail}
+            onChange={(value) => updateField("contactEmail", value)}
+          />
+          <label className="ref-field">
+            <span>포트폴리오</span>
             <textarea
-              rows={4}
-              value={form.mainBusinessDescription}
-              onChange={(event) => updateField("mainBusinessDescription", event.target.value)}
-            />
-          </label>
-        </section>
-
-        <section className="form-section" aria-label="홈페이지 표시 정보">
-          <div>
-            <p className="section-label">Content</p>
-            <h2>표시 정보</h2>
-          </div>
-          <label>
-            한 줄 소개
-            <input
-              value={form.oneLineIntro}
-              onChange={(event) => updateField("oneLineIntro", event.target.value)}
-            />
-          </label>
-          <label>
-            회사 소개
-            <textarea
-              rows={4}
-              value={form.companyIntro}
-              onChange={(event) => updateField("companyIntro", event.target.value)}
-            />
-          </label>
-          <label>
-            핵심 강점
-            <textarea
-              rows={4}
-              value={form.coreStrengths}
-              onChange={(event) => updateField("coreStrengths", event.target.value)}
-            />
-          </label>
-          <label>
-            태그
-            <textarea
-              rows={3}
-              value={form.tags}
-              onChange={(event) => updateField("tags", event.target.value)}
-            />
-          </label>
-          <label>
-            커버 이미지 URL
-            <input
-              value={form.coverImageUrl}
-              onChange={(event) => updateField("coverImageUrl", event.target.value)}
-            />
-          </label>
-        </section>
-
-        <section className="form-section" aria-label="연락처 정보">
-          <div>
-            <p className="section-label">Contact</p>
-            <h2>연락처</h2>
-          </div>
-          <div className="form-grid">
-            <label>
-              주소
-              <input
-                value={form.contactAddress}
-                onChange={(event) => updateField("contactAddress", event.target.value)}
-              />
-            </label>
-            <label>
-              전화번호
-              <input
-                value={form.contactPhone}
-                onChange={(event) => updateField("contactPhone", event.target.value)}
-              />
-            </label>
-            <label>
-              이메일
-              <input
-                value={form.contactEmail}
-                onChange={(event) => updateField("contactEmail", event.target.value)}
-              />
-            </label>
-            <label>
-              웹사이트
-              <input
-                value={form.contactWebsiteUrl}
-                onChange={(event) => updateField("contactWebsiteUrl", event.target.value)}
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="form-section" aria-label="상품 정보">
-          <div>
-            <p className="section-label">Product</p>
-            <h2>상품 정보</h2>
-          </div>
-          <div className="form-grid">
-            <label>
-              상품명
-              <input
-                value={form.productName}
-                onChange={(event) => updateField("productName", event.target.value)}
-              />
-            </label>
-            <label>
-              상품 설명
-              <textarea
-                rows={3}
-                value={form.productDescription}
-                onChange={(event) => updateField("productDescription", event.target.value)}
-              />
-            </label>
-            <label>
-              상품 이미지 URL
-              <input
-                value={form.productImageUrl}
-                onChange={(event) => updateField("productImageUrl", event.target.value)}
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="form-section" aria-label="포트폴리오와 연혁">
-          <div>
-            <p className="section-label">Proof</p>
-            <h2>포트폴리오와 연혁</h2>
-          </div>
-          <label>
-            포트폴리오
-            <textarea
-              rows={3}
               value={form.portfolioItems}
               onChange={(event) => updateField("portfolioItems", event.target.value)}
             />
+            <small>형식: 프로젝트명 | 설명</small>
           </label>
-          <label>
-            연혁
+          <label className="ref-field">
+            <span>연혁</span>
             <textarea
-              rows={3}
               value={form.historyItems}
               onChange={(event) => updateField("historyItems", event.target.value)}
             />
+            <small>형식: 연도 | 내용</small>
           </label>
-        </section>
-
-        <div className="form-actions">
-          <button disabled={isGenerating} type="submit">
-            {isGenerating ? "생성 중..." : "완료하고 홈페이지 생성"}
-          </button>
-          <Link className="secondary-link" href="/">
-            결과 목록 보기
-          </Link>
         </div>
-      </form>
+      </details>
 
-      {isGenerating ? (
-        <section className="generation-status" aria-live="polite">
-          <strong>홈페이지를 생성하고 있습니다.</strong>
-          <span>request JSON 생성, builder 실행, validation/build 검증을 순서대로 처리합니다.</span>
-        </section>
-      ) : null}
+      <p className="ref-yellow-note">
+        완료하면 실제 Goose agent가 실행됩니다. validation/build를 통과하면 생성된 홈페이지 링크가 표시됩니다.
+      </p>
 
-      {error ? (
-        <section className="generation-status generation-status-error" aria-live="polite">
-          <strong>생성 실패</strong>
-          <span>{error}</span>
-          {result?.errorSummary ? <code>{result.errorSummary}</code> : null}
-        </section>
-      ) : null}
+      <StepButtons
+        back={() => setActiveStep("info")}
+        next={generateHomepage}
+        nextLabel="완료하고 홈페이지 생성"
+      />
+    </section>
+  );
+}
 
-      {result ? (
-        <section
-          className={`generation-result ${result.previewAvailable ? "generation-result-success" : "generation-result-failed"}`}
-          aria-label="생성 결과"
-        >
-          <div>
-            <p className="section-label">Result</p>
-            <h2>{renderResultTitle(result)}</h2>
-          </div>
+function DoneStep({
+  error,
+  isGenerating,
+  restart,
+  result,
+}: {
+  error: string | null;
+  isGenerating: boolean;
+  restart: () => void;
+  result: GenerateResult | null;
+}) {
+  if (isGenerating) {
+    return (
+      <section className="ref-center ref-done">
+        <div className="ref-hero-icon">✦</div>
+        <h1>AI가 홈페이지를 생성하고 있습니다.</h1>
+        <p>request JSON 생성, Goose 실행, validation/build 검증을 순서대로 처리합니다.</p>
+      </section>
+    );
+  }
+
+  if (result?.previewAvailable) {
+    return (
+      <section className="ref-center ref-done">
+        <div className="ref-done-icon">✓</div>
+        <h1>홈페이지 생성이 완료되었습니다.</h1>
+        <p>자동 검증과 build를 통과했습니다.</p>
+
+        <div className="ref-result-box">
           <dl className="meta-list">
-            <div>
-              <dt>request_id</dt>
-              <dd>{result.requestId}</dd>
-            </div>
             <div>
               <dt>company_id</dt>
               <dd>{result.companyId}</dd>
+            </div>
+            <div>
+              <dt>status</dt>
+              <dd>{result.status}</dd>
             </div>
             <div>
               <dt>validation</dt>
@@ -357,50 +445,78 @@ export default function TestBuilderForm() {
               <dt>build</dt>
               <dd>{result.buildPassed ? "pass" : "fail"}</dd>
             </div>
-            <div>
-              <dt>provider</dt>
-              <dd>{result.modelProvider}</dd>
-            </div>
-            <div>
-              <dt>model</dt>
-              <dd>{result.modelName}</dd>
-            </div>
-            <div>
-              <dt>retry</dt>
-              <dd>{result.retryCount}</dd>
-            </div>
-            <div>
-              <dt>status</dt>
-              <dd>{result.status}</dd>
-            </div>
           </dl>
-          {!result.previewAvailable ? (
-            <div className="failure-detail" role="status">
-              <strong>{result.failureTitle || "자동 생성 실패"}</strong>
-              <span>{result.failureMessage || "홈페이지 자동 생성이 완료되지 않았습니다."}</span>
-              {result.nextAction ? <span>{result.nextAction}</span> : null}
-              {result.failureCategory ? <code>{result.failureCategory}</code> : null}
-              {result.errorSummary ? <pre>{result.errorSummary}</pre> : null}
-            </div>
-          ) : null}
-          <div className="result-actions">
-            {result.previewAvailable ? (
-              <Link className="primary-link" href={result.homepageUrl}>
-                생성된 홈페이지 보기
-              </Link>
-            ) : (
-              <span className="status-badge status-badge-danger">홈페이지 미생성</span>
-            )}
-            <code>{result.generatedPath}</code>
-          </div>
-        </section>
-      ) : null}
-    </main>
+          <Link className="ref-primary-button ref-result-link" href={result.homepageUrl}>
+            생성된 홈페이지 보기
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="ref-center ref-done">
+      <div className="ref-done-icon ref-done-icon-failed">!</div>
+      <h1>{result?.failureTitle || "자동 생성이 완료되지 않았습니다."}</h1>
+      <p>{result?.failureMessage || error || "Goose 실행 또는 검증 단계에서 실패했습니다."}</p>
+      {result?.nextAction ? <p>{result.nextAction}</p> : null}
+      {result?.errorSummary ? <pre className="ref-error-summary">{result.errorSummary}</pre> : null}
+      <button className="ref-ghost-button" onClick={restart}>
+        다시 입력하기
+      </button>
+    </section>
   );
 }
 
-function renderResultTitle(result: GenerateResult) {
-  if (result.previewAvailable) return "홈페이지 생성 완료";
-  if (result.status === "manual_required") return "자동 생성 예외";
-  return "자동 생성 실패";
+function Benefit({ icon, title, text }: { icon: string; title: string; text: string }) {
+  return (
+    <div className="ref-benefit">
+      <span>{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <small>{text}</small>
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  helper,
+  label,
+  onChange,
+  value,
+}: {
+  helper?: string;
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="ref-field">
+      <span>{label}</span>
+      <input value={value} onChange={(event) => onChange(event.target.value)} />
+      {helper ? <small>{helper}</small> : null}
+    </label>
+  );
+}
+
+function StepButtons({
+  back,
+  next,
+  nextLabel = "다음",
+}: {
+  back: () => void;
+  next: () => void;
+  nextLabel?: string;
+}) {
+  return (
+    <div className="ref-actions">
+      <button className="ref-secondary-button" onClick={back} type="button">
+        이전
+      </button>
+      <button className="ref-primary-button" onClick={next} type="button">
+        {nextLabel}
+      </button>
+    </div>
+  );
 }

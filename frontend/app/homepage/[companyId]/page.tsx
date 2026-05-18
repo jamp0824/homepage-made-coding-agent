@@ -139,27 +139,53 @@ export default async function GeneratedHomepagePage({ params }: PageProps) {
 function renderResultStyleHomepage(content: GeneratedContent, status: string) {
   const contactEntries = Object.entries(content.contact || {}).filter(([, value]) => Boolean(value));
   const tags = [...(content.tags || []), content.business_type].filter(Boolean);
+  const productCount = content.products.length;
 
   return (
     <main className="homepage profile-page" data-template={content.template_id} data-template-variant={content.template_variant}>
-      <section className="profile-cover" data-section="hero">
-        {content.cover_image_url ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
-      </section>
+      <header className="profile-nav" aria-label="생성 홈페이지 탐색">
+        <div className="profile-brand-mark" aria-hidden="true">H</div>
+        <nav aria-label="페이지 섹션">
+          <a href="#company">기업</a>
+          {productCount > 0 ? <a href="#products">상품</a> : null}
+          <a href="#contact">문의</a>
+        </nav>
+      </header>
 
-      <section className="profile-summary" data-section="company_summary">
-        <p className="eyebrow">{content.industry || "회사소개중심형"}</p>
-        <h1>{content.company_name}</h1>
-        <p>{content.one_line_intro}</p>
-        <div className="tag-row">
-          {tags.map((tag) => (
-            <span key={tag}>{tag}</span>
-          ))}
-          <span>{status}</span>
+      <div className="profile-action-row">
+        <a className="profile-back-link" href="/">← 뒤로</a>
+        <div className="profile-actions" aria-label="페이지 액션">
+          <button type="button" aria-label="좋아요">♡</button>
+          <button type="button" aria-label="공유">↗</button>
         </div>
-      </section>
+      </div>
+
+      <article className="profile-hero-card">
+        <section className="profile-cover" data-section="hero">
+          {content.cover_image_url ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
+        </section>
+
+        <section className="profile-summary" data-section="company_summary">
+          <p className="eyebrow">{content.industry || "회사소개중심형"}</p>
+          <div className="profile-title-row">
+            <h1>{content.company_name}</h1>
+            <span>{status}</span>
+          </div>
+          <p>{content.one_line_intro}</p>
+          <div className="tag-row">
+            {tags.map((tag) => (
+              <span key={tag}>{tag}</span>
+            ))}
+          </div>
+          <div className="profile-meta-row">
+            <span>회사소개중심형</span>
+            {productCount > 0 ? <span>상품 {productCount}개</span> : null}
+          </div>
+        </section>
+      </article>
 
       {contactEntries.length > 0 ? (
-        <section className="section info-card" data-section="contact_info">
+        <section className="section info-card profile-info-card" data-section="contact_info">
           <div className="section-label">Info</div>
           <h2>기업 정보</h2>
           <dl className="meta-list">
@@ -173,13 +199,13 @@ function renderResultStyleHomepage(content: GeneratedContent, status: string) {
         </section>
       ) : null}
 
-      <section className="section info-card" data-section="company_intro">
+      <section id="company" className="section info-card" data-section="company_intro">
         <div className="section-label">Company</div>
         <h2>기업 소개</h2>
         <p>{content.company_intro}</p>
       </section>
 
-      <section className="section info-card" data-section="core_strengths">
+      <section className="section info-card profile-strength-card" data-section="core_strengths">
         <div className="section-label">Strengths</div>
         <h2>핵심 강점</h2>
         <ul className="strength-list">
@@ -193,14 +219,14 @@ function renderResultStyleHomepage(content: GeneratedContent, status: string) {
         <section className="section info-card" data-section="history">
           <div className="section-label">History</div>
           <h2>연혁</h2>
-          <div className="item-grid">
+          <ol className="profile-timeline">
             {content.history.map((item) => (
-              <article className="item-card" key={`${item.year}-${item.text}`}>
-                <h3>{item.year}</h3>
-                <p>{item.text}</p>
-              </article>
+              <li key={`${item.year}-${item.text}`}>
+                <strong>{item.year}</strong>
+                <span>{item.text}</span>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
       ) : null}
 
@@ -210,7 +236,8 @@ function renderResultStyleHomepage(content: GeneratedContent, status: string) {
           <h2>포트폴리오</h2>
           <div className="item-grid">
             {content.portfolio.map((item) => (
-              <article className="item-card" key={item.title ?? item.description}>
+              <article className="item-card portfolio-card" key={item.title ?? item.description}>
+                <span className="card-icon" aria-hidden="true">□</span>
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>
               </article>
@@ -220,22 +247,25 @@ function renderResultStyleHomepage(content: GeneratedContent, status: string) {
       ) : null}
 
       {content.products.length > 0 ? (
-        <section className="section info-card" data-section="featured_products">
+        <section id="products" className="section info-card" data-section="featured_products">
           <div className="section-label">Products</div>
-          <h2>주요 상품</h2>
-          <div className="item-grid">
+          <h2>주요 상품 <span className="count-badge">{productCount}</span></h2>
+          <div className="product-card-list">
             {content.products.map((product) => (
-              <article className="item-card" key={product.name}>
-                {product.image_url ? <img className="item-image" src={product.image_url} alt="" /> : null}
+              <article className="item-card product-profile-card" key={product.name}>
+                <div className="product-image-frame">
+                  {product.image_url ? <img className="item-image" src={product.image_url} alt="" /> : <div className="product-image-fallback" aria-hidden="true" />}
+                </div>
                 <h3>{product.name}</h3>
                 <p>{product.description}</p>
+                <span className="product-cta">견적요청</span>
               </article>
             ))}
           </div>
         </section>
       ) : null}
 
-      <section className="contact" data-section="contact_cta">
+      <section id="contact" className="contact profile-contact-card" data-section="contact_cta">
         <h2>문의하기</h2>
         <p>{content.contact_cta}</p>
       </section>

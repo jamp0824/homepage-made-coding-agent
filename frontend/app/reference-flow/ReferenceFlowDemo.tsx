@@ -107,7 +107,7 @@ function TypeStep({ setActiveStep }: { setActiveStep: (step: StepKey) => void })
       </div>
 
       <div className="ref-choice-list">
-        <button className="ref-choice-card">
+        <button className="ref-choice-card ref-choice-card-disabled" disabled>
           <span className="ref-choice-icon">◇</span>
           <span>
             <strong>상품중심형</strong>
@@ -115,10 +115,11 @@ function TypeStep({ setActiveStep }: { setActiveStep: (step: StepKey) => void })
             <em>
               <span>상품 갤러리</span>
               <span>견적/구매 강조</span>
+              <span>추후 지원</span>
             </em>
           </span>
         </button>
-        <button className="ref-choice-card">
+        <button className="ref-choice-card ref-choice-card-selected" disabled>
           <span className="ref-choice-icon">▤</span>
           <span>
             <strong>회사소개중심형</strong>
@@ -146,8 +147,8 @@ function InfoStep({ setActiveStep }: { setActiveStep: (step: StepKey) => void })
       </div>
 
       <div className="ref-form">
-        <Field label="업종" value="IT·소프트웨어" helper="등록된 기업 정보에서 가져온 정보입니다" />
-        <Field label="업태" value="도매 및 소프트웨어 개발" helper="등록된 기업 정보에서 가져온 정보입니다" />
+        <Field label="업종" value="IT·소프트웨어" helper="등록된 기업 정보에서 가져온 정보이며 수정할 수 있습니다" />
+        <Field label="업태" value="도매 및 소프트웨어 개발" helper="등록된 기업 정보에서 가져온 정보이며 수정할 수 있습니다" />
         <label className="ref-field">
           <span>
             주요 사업 내용 <b>*</b>
@@ -193,10 +194,18 @@ function AiStep({ setActiveStep }: { setActiveStep: (step: StepKey) => void }) {
           <small>⊙ 표시</small>
         </div>
         <ul className="ref-strength-fields">
-          <li>업계 10년 이상의 풍부한 경험과 노하우</li>
-          <li>고객 맞춤형 솔루션 제공</li>
-          <li>전문 인력을 통한 체계적인 서비스</li>
-          <li>신속하고 정확한 A/S 지원</li>
+          <li>
+            <input aria-label="핵심 강점 1" defaultValue="업계 10년 이상의 풍부한 경험과 노하우" />
+          </li>
+          <li>
+            <input aria-label="핵심 강점 2" defaultValue="고객 맞춤형 솔루션 제공" />
+          </li>
+          <li>
+            <input aria-label="핵심 강점 3" defaultValue="전문 인력을 통한 체계적인 서비스" />
+          </li>
+          <li>
+            <input aria-label="핵심 강점 4" defaultValue="신속하고 정확한 A/S 지원" />
+          </li>
         </ul>
       </div>
 
@@ -254,7 +263,7 @@ function Field({ label, value, helper }: { label: string; value: string; helper:
   return (
     <label className="ref-field">
       <span>{label}</span>
-      <input value={value} readOnly />
+      <input defaultValue={value} />
       <small>{helper}</small>
     </label>
   );

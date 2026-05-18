@@ -68,8 +68,8 @@ frontend/app/test-builder/TestBuilderForm.tsx
 
 - 홈페이지 유형
 - 회사명
-- 업종
-- 사업 유형
+- 업종: 등록된 기업 정보에서 가져온 값이며 화면에서 수정 가능
+- 업태 (`business_type`): 등록된 기업 정보에서 가져온 값이며 화면에서 수정 가능
 - 주요 사업 설명
 - 한 줄 소개
 - 회사 소개
@@ -212,7 +212,7 @@ product       -> templates/product_basic
 
 - 회사명
 - 업종
-- 사업 유형
+- 업태 (`business_type`)
 - 주요 사업 설명
 - 한 줄 소개
 - 회사 소개

@@ -161,7 +161,7 @@ export async function POST(request: Request) {
 
 function normalizePayload(payload: TestGeneratePayload) {
   return {
-    homepageType: payload.homepageType === "product" ? "product" : "company_intro",
+    homepageType: "company_intro",
     companyName: cleanText(payload.companyName),
     industry: cleanText(payload.industry),
     businessType: cleanText(payload.businessType),
