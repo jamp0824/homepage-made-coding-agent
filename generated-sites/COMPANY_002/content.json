@@ -45,6 +45,10 @@
       "visible": true
     },
     {
+      "id": "product_area",
+      "visible": false
+    },
+    {
       "id": "product_registration_cta",
       "visible": true
     },
@@ -52,5 +56,20 @@
       "id": "contact_cta",
       "visible": true
     }
-  ]
+  ],
+  "section_visibility": {
+    "company_intro": true,
+    "core_strengths": true,
+    "product_area": false,
+    "product_registration_cta": true,
+    "contact_cta": true
+  },
+  "section_layout": {
+    "core_strengths": "grid_2",
+    "product_area": "grid_2"
+  },
+  "content_density": "standard",
+  "content_source": "request_only",
+  "draft_id": "",
+  "confirmed_at": ""
 }

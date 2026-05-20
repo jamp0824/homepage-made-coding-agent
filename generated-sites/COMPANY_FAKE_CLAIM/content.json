@@ -49,8 +49,44 @@
       "visible": true
     },
     {
+      "id": "contact_info",
+      "visible": false
+    },
+    {
+      "id": "history",
+      "visible": false
+    },
+    {
+      "id": "portfolio",
+      "visible": false
+    },
+    {
+      "id": "featured_products",
+      "visible": false
+    },
+    {
       "id": "contact_cta",
       "visible": true
     }
-  ]
+  ],
+  "section_visibility": {
+    "company_summary": true,
+    "company_intro": true,
+    "core_strengths": true,
+    "contact_info": false,
+    "history": false,
+    "portfolio": false,
+    "featured_products": false,
+    "contact_cta": true
+  },
+  "section_layout": {
+    "core_strengths": "grid_2",
+    "history": "timeline",
+    "portfolio": "grid_2",
+    "featured_products": "grid_2"
+  },
+  "content_density": "standard",
+  "content_source": "request_only",
+  "draft_id": "",
+  "confirmed_at": ""
 }

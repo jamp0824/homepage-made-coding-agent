@@ -44,6 +44,12 @@ Optional fields:
 - `portfolio`
 - `history`
 - `preferred_style`
+- `section_visibility`
+- `section_layout`
+- `content_density`
+- `content_source`
+- `draft_id`
+- `confirmed_at`
 
 ## Golden Pipeline
 
@@ -111,6 +117,7 @@ Allowed safe transformations:
 - reuse `core_strengths`
 - map `industry` to template asset theme
 - render provided `products`, `history`, or `portfolio`
+- apply fixed-template section visibility/layout/density controls from a user-confirmed draft
 
 Forbidden invented claims:
 
@@ -158,6 +165,30 @@ If `products` has items:
 If `history` is empty, do not create a history section.
 
 If `portfolio` is empty, do not create portfolio items.
+
+## Fixed Template Draft Controls
+
+If the request includes draft controls, keep them inside the fixed template.
+
+Allowed layout controls:
+
+- `core_strengths`: `list` or `grid_2`
+- `history`: `timeline` or `compact`
+- `portfolio`: `list` or `grid_2`
+- `featured_products`: `grid_2` or `grid_3`
+- `product_area`: `grid_2` or `grid_3`
+
+Allowed density controls:
+
+- `compact`
+- `standard`
+- `rich`
+
+Do not hide required sections:
+
+- `company_intro`
+- `core_strengths`
+- `contact_cta`
 
 ## Result Status Rules
 

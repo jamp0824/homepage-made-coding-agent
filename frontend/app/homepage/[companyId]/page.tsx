@@ -140,9 +140,24 @@ function renderResultStyleHomepage(content: GeneratedContent) {
   const contactEntries = Object.entries(content.contact || {}).filter(([, value]) => Boolean(value));
   const tags = [...(content.tags || []), content.business_type].filter(Boolean);
   const productCount = content.products.length;
+  const visibleSections = new Set(content.sections || []);
+  const sectionLayout = content.section_layout || {};
+  const strengthClassName =
+    sectionLayout.core_strengths === "list" ? "strength-list strength-list-single" : "strength-list";
+  const historyClassName =
+    sectionLayout.history === "compact" ? "profile-timeline profile-timeline-compact" : "profile-timeline";
+  const portfolioClassName =
+    sectionLayout.portfolio === "list" ? "item-grid item-grid-list" : "item-grid";
+  const productClassName =
+    sectionLayout.featured_products === "grid_3" ? "product-card-list product-card-list-3" : "product-card-list";
 
   return (
-    <main className="homepage profile-page" data-template={content.template_id} data-template-variant={content.template_variant}>
+    <main
+      className="homepage profile-page"
+      data-content-density={content.content_density || "standard"}
+      data-template={content.template_id}
+      data-template-variant={content.template_variant}
+    >
       <header className="profile-nav" aria-label="생성 홈페이지 탐색">
         <div className="profile-brand-mark" aria-hidden="true">H</div>
         <nav aria-label="페이지 섹션">
@@ -161,25 +176,27 @@ function renderResultStyleHomepage(content: GeneratedContent) {
           {content.cover_image_url ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
         </section>
 
-        <section className="profile-summary" data-section="company_summary">
-          <p className="eyebrow">{content.industry || "회사소개중심형"}</p>
-          <div className="profile-title-row">
-            <h1>{content.company_name}</h1>
-          </div>
-          <p>{content.one_line_intro}</p>
-          <div className="tag-row">
-            {tags.map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
-          <div className="profile-meta-row">
-            <span>회사소개중심형</span>
-            {productCount > 0 ? <span>상품 {productCount}개</span> : null}
-          </div>
-        </section>
+        {visibleSections.has("company_summary") ? (
+          <section className="profile-summary" data-section="company_summary">
+            <p className="eyebrow">{content.industry || "회사소개중심형"}</p>
+            <div className="profile-title-row">
+              <h1>{content.company_name}</h1>
+            </div>
+            <p>{content.one_line_intro}</p>
+            <div className="tag-row">
+              {tags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+            <div className="profile-meta-row">
+              <span>회사소개중심형</span>
+              {productCount > 0 ? <span>상품 {productCount}개</span> : null}
+            </div>
+          </section>
+        ) : null}
       </article>
 
-      {contactEntries.length > 0 ? (
+      {contactEntries.length > 0 && visibleSections.has("contact_info") ? (
         <section className="section info-card profile-info-card" data-section="contact_info">
           <div className="section-label">Info</div>
           <h2>기업 정보</h2>
@@ -203,18 +220,18 @@ function renderResultStyleHomepage(content: GeneratedContent) {
       <section className="section info-card profile-strength-card" data-section="core_strengths">
         <div className="section-label">Strengths</div>
         <h2>핵심 강점</h2>
-        <ul className="strength-list">
+        <ul className={strengthClassName}>
           {content.core_strengths.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
       </section>
 
-      {content.history.length > 0 ? (
+      {content.history.length > 0 && visibleSections.has("history") ? (
         <section className="section info-card" data-section="history">
           <div className="section-label">History</div>
           <h2>연혁</h2>
-          <ol className="profile-timeline">
+          <ol className={historyClassName}>
             {content.history.map((item) => (
               <li key={`${item.year}-${item.text}`}>
                 <strong>{item.year}</strong>
@@ -225,11 +242,11 @@ function renderResultStyleHomepage(content: GeneratedContent) {
         </section>
       ) : null}
 
-      {content.portfolio.length > 0 ? (
+      {content.portfolio.length > 0 && visibleSections.has("portfolio") ? (
         <section className="section info-card" data-section="portfolio">
           <div className="section-label">Portfolio</div>
           <h2>포트폴리오</h2>
-          <div className="item-grid">
+          <div className={portfolioClassName}>
             {content.portfolio.map((item) => (
               <article className="item-card portfolio-card" key={item.title ?? item.description}>
                 <span className="card-icon" aria-hidden="true">□</span>
@@ -241,11 +258,11 @@ function renderResultStyleHomepage(content: GeneratedContent) {
         </section>
       ) : null}
 
-      {content.products.length > 0 ? (
+      {content.products.length > 0 && visibleSections.has("featured_products") ? (
         <section id="products" className="section info-card" data-section="featured_products">
           <div className="section-label">Products</div>
           <h2>주요 상품 <span className="count-badge">{productCount}</span></h2>
-          <div className="product-card-list">
+          <div className={productClassName}>
             {content.products.map((product) => (
               <article className="item-card product-profile-card" key={product.name}>
                 <div className="product-image-frame">

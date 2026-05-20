@@ -29,10 +29,36 @@ const allowedTopLevelFields = new Set([
   "products",
   "portfolio",
   "history",
+  "section_visibility",
+  "section_layout",
+  "content_density",
+  "content_source",
+  "draft_id",
+  "confirmed_at",
   "preferred_style",
   "created_at",
 ]);
 const companyIdPattern = /^[A-Za-z0-9_-]+$/;
+const requiredVisibleSections = new Set(["company_intro", "core_strengths", "contact_cta"]);
+const allowedVisibilitySections = new Set([
+  "company_summary",
+  "contact_info",
+  "company_intro",
+  "core_strengths",
+  "history",
+  "portfolio",
+  "featured_products",
+  "product_area",
+  "product_registration_cta",
+  "contact_cta",
+]);
+const allowedLayoutValues = {
+  core_strengths: new Set(["list", "grid_2"]),
+  history: new Set(["timeline", "compact"]),
+  portfolio: new Set(["list", "grid_2"]),
+  featured_products: new Set(["grid_2", "grid_3"]),
+  product_area: new Set(["grid_2", "grid_3"]),
+};
 
 const errors = [];
 let request;
@@ -133,6 +159,28 @@ if (!request || typeof request !== "object" || Array.isArray(request)) {
   if ("products" in request) validateProducts(request.products, errors);
   if ("history" in request) validateHistory(request.history, errors);
   if ("portfolio" in request) validatePortfolio(request.portfolio, errors);
+  if ("section_visibility" in request) validateSectionVisibility(request.section_visibility, errors);
+  if ("section_layout" in request) validateSectionLayout(request.section_layout, errors);
+  if (
+    "content_density" in request &&
+    !["compact", "standard", "rich"].includes(request.content_density)
+  ) {
+    errors.push("content_density must be compact, standard, or rich");
+  }
+  if (
+    "content_source" in request &&
+    !["request_only", "ai_suggested", "ai_suggested_user_confirmed"].includes(
+      request.content_source,
+    )
+  ) {
+    errors.push("content_source must be request_only, ai_suggested, or ai_suggested_user_confirmed");
+  }
+  if ("draft_id" in request && typeof request.draft_id !== "string") {
+    errors.push("draft_id must be a string");
+  }
+  if ("confirmed_at" in request && typeof request.confirmed_at !== "string") {
+    errors.push("confirmed_at must be a string");
+  }
 }
 
 if (errors.length > 0) {
@@ -221,4 +269,42 @@ function validatePortfolio(portfolio, outputErrors) {
       outputErrors.push(`portfolio[${index}] must be an object`);
     }
   });
+}
+
+function validateSectionVisibility(sectionVisibility, outputErrors) {
+  if (!sectionVisibility || typeof sectionVisibility !== "object" || Array.isArray(sectionVisibility)) {
+    outputErrors.push("section_visibility must be an object");
+    return;
+  }
+
+  for (const [section, visible] of Object.entries(sectionVisibility)) {
+    if (!allowedVisibilitySections.has(section)) {
+      outputErrors.push(`section_visibility has unsupported section: ${section}`);
+      continue;
+    }
+    if (typeof visible !== "boolean") {
+      outputErrors.push(`section_visibility.${section} must be a boolean`);
+    }
+    if (visible === false && requiredVisibleSections.has(section)) {
+      outputErrors.push(`section_visibility.${section} cannot be false`);
+    }
+  }
+}
+
+function validateSectionLayout(sectionLayout, outputErrors) {
+  if (!sectionLayout || typeof sectionLayout !== "object" || Array.isArray(sectionLayout)) {
+    outputErrors.push("section_layout must be an object");
+    return;
+  }
+
+  for (const [section, layout] of Object.entries(sectionLayout)) {
+    const allowed = allowedLayoutValues[section];
+    if (!allowed) {
+      outputErrors.push(`section_layout has unsupported section: ${section}`);
+      continue;
+    }
+    if (typeof layout !== "string" || !allowed.has(layout)) {
+      outputErrors.push(`section_layout.${section} has unsupported layout: ${layout}`);
+    }
+  }
 }

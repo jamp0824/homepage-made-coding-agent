@@ -12,6 +12,7 @@
   "validation_result": {
     "passed": false,
     "errors": [
+      "core_strengths count must match request.core_strengths",
       "Unsupported high-risk phrase found: 업계 1위",
       "Unsupported high-risk phrase found: 수상 경력"
     ],
@@ -72,5 +73,5 @@
       "error_type": "validation_failed"
     }
   ],
-  "completed_at": "2026-05-18T16:59:54.287Z"
+  "completed_at": "2026-05-20T15:48:31.241Z"
 }

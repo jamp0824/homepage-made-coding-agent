@@ -51,6 +51,11 @@ const contactEntries = Object.entries(contact).filter(([, value]) => Boolean(val
 const products = Array.isArray(request.products) ? request.products : [];
 const history = Array.isArray(request.history) ? request.history : [];
 const portfolio = Array.isArray(request.portfolio) ? request.portfolio : [];
+const sectionVisibility = normalizeSectionVisibility(request.section_visibility);
+const sectionLayout = normalizeSectionLayout(request.section_layout);
+const contentDensity = normalizeContentDensity(request.content_density);
+const contentSource =
+  typeof request.content_source === "string" ? request.content_source : "request_only";
 const coreStrengths =
   Array.isArray(request.core_strengths) && request.core_strengths.length > 0
     ? request.core_strengths
@@ -60,6 +65,12 @@ if (process.env.INJECT_FAKE_CLAIM === "1") {
 }
 
 const sections = buildSections();
+const sectionManifest = buildSectionManifest(sections);
+const actualSectionVisibility = Object.fromEntries(
+  sectionManifest
+    .filter((section) => section.id !== "hero")
+    .map((section) => [section.id, section.visible]),
+);
 const businessSummary = `${request.industry} 분야에서 ${request.business_type}을 수행합니다.`;
 const productRegistrationCta =
   request.homepage_type === "product" && products.length === 0
@@ -89,10 +100,13 @@ const content = {
   product_registration_cta: productRegistrationCta,
   contact_cta: `${request.company_name}의 사업과 서비스가 궁금하시다면 문의해 주세요.`,
   sections,
-  section_manifest: sections.map((section) => ({
-    id: section,
-    visible: true,
-  })),
+  section_manifest: sectionManifest,
+  section_visibility: actualSectionVisibility,
+  section_layout: sectionLayout,
+  content_density: contentDensity,
+  content_source: contentSource,
+  draft_id: typeof request.draft_id === "string" ? request.draft_id : "",
+  confirmed_at: typeof request.confirmed_at === "string" ? request.confirmed_at : "",
 };
 
 const assets = {
@@ -215,22 +229,105 @@ console.log(sitePath);
 
 function buildSections() {
   if (request.homepage_type === "product") {
+    const productSection = products.length > 0 ? "product_area" : "product_registration_cta";
     return [
       "hero",
       "company_intro",
       "core_strengths",
-      products.length > 0 ? "product_area" : "product_registration_cta",
+      wantsVisible(productSection, true) ? productSection : "",
       "contact_cta",
-    ];
+    ].filter(Boolean);
   }
 
-  const companySections = ["hero", "company_summary", "company_intro", "core_strengths"];
-  if (contactEntries.length > 0) companySections.push("contact_info");
-  if (history.length > 0) companySections.push("history");
-  if (portfolio.length > 0) companySections.push("portfolio");
-  if (products.length > 0) companySections.push("featured_products");
+  const companySections = ["hero"];
+  if (wantsVisible("company_summary", true)) companySections.push("company_summary");
+  companySections.push("company_intro", "core_strengths");
+  if (contactEntries.length > 0 && wantsVisible("contact_info", true)) companySections.push("contact_info");
+  if (history.length > 0 && wantsVisible("history", true)) companySections.push("history");
+  if (portfolio.length > 0 && wantsVisible("portfolio", true)) companySections.push("portfolio");
+  if (products.length > 0 && wantsVisible("featured_products", true)) companySections.push("featured_products");
   companySections.push("contact_cta");
   return companySections;
+}
+
+function buildSectionManifest(visibleSections) {
+  const visible = new Set(visibleSections);
+  const candidateSections =
+    request.homepage_type === "product"
+      ? ["hero", "company_intro", "core_strengths", "product_area", "product_registration_cta", "contact_cta"]
+      : [
+          "hero",
+          "company_summary",
+          "company_intro",
+          "core_strengths",
+          "contact_info",
+          "history",
+          "portfolio",
+          "featured_products",
+          "contact_cta",
+        ];
+
+  return candidateSections.map((section) => ({
+    id: section,
+    visible: visible.has(section),
+  }));
+}
+
+function wantsVisible(sectionName, hasData) {
+  if (["hero", "company_intro", "core_strengths", "contact_cta"].includes(sectionName)) {
+    return true;
+  }
+  if (!hasData) return false;
+  if (Object.prototype.hasOwnProperty.call(sectionVisibility, sectionName)) {
+    return sectionVisibility[sectionName] !== false;
+  }
+  return true;
+}
+
+function normalizeSectionVisibility(value) {
+  const allowed = new Set([
+    "company_summary",
+    "contact_info",
+    "company_intro",
+    "core_strengths",
+    "history",
+    "portfolio",
+    "featured_products",
+    "product_area",
+    "product_registration_cta",
+    "contact_cta",
+  ]);
+  const output = {};
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [section, visible] of Object.entries(value)) {
+      if (allowed.has(section) && typeof visible === "boolean") {
+        output[section] = visible;
+      }
+    }
+  }
+  for (const requiredSection of ["company_intro", "core_strengths", "contact_cta"]) {
+    output[requiredSection] = true;
+  }
+  return output;
+}
+
+function normalizeSectionLayout(value) {
+  const defaults = templateConfig.default_section_layout || {};
+  const allowed = templateConfig.allowed_section_layout || {};
+  const output = { ...defaults };
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [section, layout] of Object.entries(value)) {
+      if (Array.isArray(allowed[section]) && allowed[section].includes(layout)) {
+        output[section] = layout;
+      }
+    }
+  }
+  return output;
+}
+
+function normalizeContentDensity(value) {
+  const allowed = templateConfig.allowed_content_density || ["compact", "standard", "rich"];
+  return allowed.includes(value) ? value : templateConfig.default_content_density || "standard";
 }
 
 function normalizeStringArray(value) {
@@ -273,9 +370,15 @@ export default function GeneratedHomepage() {
   const contactEntries = Object.entries(content.contact || {});
   const hasCoverImage = Boolean(content.cover_image_url);
   const productCount = content.products.length;
+  const visibleSections = new Set(content.sections || []);
+  const layout = content.section_layout || {};
+  const strengthClassName = layout.core_strengths === "list" ? "strength-grid strength-grid-list" : "strength-grid";
+  const historyClassName = layout.history === "compact" ? "timeline timeline-compact" : "timeline";
+  const portfolioClassName = layout.portfolio === "list" ? "card-grid card-list" : "card-grid";
+  const productClassName = layout.featured_products === "grid_3" ? "product-card-list product-card-list-3" : "product-card-list";
 
   return (
-    <main className="profile-page" data-template={content.template_id} data-template-variant={content.template_variant} data-asset-theme={assets.asset_theme}>
+    <main className="profile-page" data-template={content.template_id} data-template-variant={content.template_variant} data-content-density={content.content_density} data-asset-theme={assets.asset_theme}>
       <header className="profile-nav" aria-label="생성 홈페이지 탐색">
         <div className="profile-brand-mark" aria-hidden="true">H</div>
         <nav aria-label="페이지 섹션">
@@ -291,6 +394,7 @@ export default function GeneratedHomepage() {
         <section className="profile-cover" data-section="hero">
           {hasCoverImage ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
         </section>
+        {visibleSections.has("company_summary") ? (
         <section className="profile-summary" data-section="company_summary">
           <p className="eyebrow">{content.industry}</p>
           <div className="profile-title-row">
@@ -306,8 +410,9 @@ export default function GeneratedHomepage() {
             {productCount > 0 ? <span>상품 {productCount}개</span> : null}
           </div>
         </section>
+        ) : null}
       </article>
-      {contactEntries.length > 0 ? (
+      {contactEntries.length > 0 && visibleSections.has("contact_info") ? (
         <section className="info-card profile-info-card" data-section="contact_info">
           <h2>기업 정보</h2>
           <dl className="contact-list">
@@ -326,30 +431,30 @@ export default function GeneratedHomepage() {
       </section>
       <section className="info-card profile-strength-card" data-section="core_strengths">
         <h2>핵심 강점</h2>
-        <ul className="strength-grid">
+        <ul className={strengthClassName}>
           {content.core_strengths.map((item) => <li key={item}>{item}</li>)}
         </ul>
       </section>
-      {content.history.length > 0 ? (
+      {content.history.length > 0 && visibleSections.has("history") ? (
         <section className="info-card" data-section="history">
           <h2>연혁</h2>
-          <ol className="timeline">
+          <ol className={historyClassName}>
             {content.history.map((item) => <li key={item.year + item.text}><strong>{item.year}</strong><span>{item.text}</span></li>)}
           </ol>
         </section>
       ) : null}
-      {content.portfolio.length > 0 ? (
+      {content.portfolio.length > 0 && visibleSections.has("portfolio") ? (
         <section className="info-card" data-section="portfolio">
           <h2>포트폴리오</h2>
-          <div className="card-grid">
+          <div className={portfolioClassName}>
             {content.portfolio.map((item) => <article className="portfolio-card" key={item.title || item.description}><span className="card-icon" aria-hidden="true">□</span><h3>{item.title}</h3><p>{item.description}</p></article>)}
           </div>
         </section>
       ) : null}
-      {content.products.length > 0 ? (
+      {content.products.length > 0 && visibleSections.has("featured_products") ? (
         <section id="products" className="info-card" data-section="featured_products">
           <h2>주요 상품 <span className="count-badge">{productCount}</span></h2>
-          <div className="product-card-list">
+          <div className={productClassName}>
             {content.products.map((product) => (
               <article className="product-profile-card" key={product.name}>
                 <div className="product-image-frame">
@@ -394,6 +499,11 @@ export default function GeneratedHomepage() {
 
 function renderCompanyIntroHtml() {
   const productCount = products.length;
+  const visibleSections = new Set(content.sections);
+  const strengthClassName = sectionLayout.core_strengths === "list" ? "strength-grid strength-grid-list" : "strength-grid";
+  const historyClassName = sectionLayout.history === "compact" ? "timeline timeline-compact" : "timeline";
+  const portfolioClassName = sectionLayout.portfolio === "list" ? "card-grid card-list" : "card-grid";
+  const productClassName = sectionLayout.featured_products === "grid_3" ? "product-card-list product-card-list-3" : "product-card-list";
   const tagHtml = [...tags, request.business_type]
     .filter(Boolean)
     .map((tag) => `<span>${escapeHtml(tag)}</span>`)
@@ -402,7 +512,7 @@ function renderCompanyIntroHtml() {
     ? `<img src="${escapeHtml(content.cover_image_url)}" alt="" />`
     : `<div class="cover-fallback" aria-hidden="true"></div>`;
   const contactHtml =
-    contactEntries.length > 0
+    contactEntries.length > 0 && visibleSections.has("contact_info")
       ? `<section class="info-card profile-info-card" data-section="contact_info">
         <h2>기업 정보</h2>
         <dl class="contact-list">
@@ -415,19 +525,19 @@ function renderCompanyIntroHtml() {
       </section>`
       : "";
   const historyHtml =
-    history.length > 0
+    history.length > 0 && visibleSections.has("history")
       ? `<section class="info-card" data-section="history">
         <h2>연혁</h2>
-        <ol class="timeline">
+        <ol class="${historyClassName}">
           ${history.map((item) => `<li><strong>${escapeHtml(item.year)}</strong><span>${escapeHtml(item.text)}</span></li>`).join("\n")}
         </ol>
       </section>`
       : "";
   const portfolioHtml =
-    portfolio.length > 0
+    portfolio.length > 0 && visibleSections.has("portfolio")
       ? `<section class="info-card" data-section="portfolio">
         <h2>포트폴리오</h2>
-        <div class="card-grid">
+        <div class="${portfolioClassName}">
           ${portfolio
             .map((item) => `<article class="portfolio-card"><span class="card-icon" aria-hidden="true">□</span><h3>${escapeHtml(item.title || "")}</h3><p>${escapeHtml(item.description || "")}</p></article>`)
             .join("\n")}
@@ -435,10 +545,10 @@ function renderCompanyIntroHtml() {
       </section>`
       : "";
   const productsHtml =
-    products.length > 0
+    products.length > 0 && visibleSections.has("featured_products")
       ? `<section id="products" class="info-card" data-section="featured_products">
         <h2>주요 상품 <span class="count-badge">${productCount}</span></h2>
-        <div class="product-card-list">
+        <div class="${productClassName}">
           ${products
             .map(
               (product) => `<article class="product-profile-card">
@@ -463,7 +573,7 @@ function renderCompanyIntroHtml() {
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="profile-page" data-template="${templateId}" data-template-variant="${RESULT_STYLE_VARIANT}" data-asset-theme="${escapeHtml(assetTheme)}">
+    <main class="profile-page" data-template="${templateId}" data-template-variant="${RESULT_STYLE_VARIANT}" data-content-density="${escapeHtml(contentDensity)}" data-asset-theme="${escapeHtml(assetTheme)}">
       <header class="profile-nav" aria-label="생성 홈페이지 탐색">
         <div class="profile-brand-mark" aria-hidden="true">H</div>
         <nav aria-label="페이지 섹션">
@@ -477,7 +587,7 @@ function renderCompanyIntroHtml() {
       </div>
       <article class="profile-hero-card">
         <section class="profile-cover" data-section="hero">${coverHtml}</section>
-        <section class="profile-summary" data-section="company_summary">
+        ${visibleSections.has("company_summary") ? `<section class="profile-summary" data-section="company_summary">
           <p class="eyebrow">${escapeHtml(content.industry)}</p>
           <div class="profile-title-row">
             <h1>${escapeHtml(content.company_name)}</h1>
@@ -488,13 +598,13 @@ function renderCompanyIntroHtml() {
             <span>회사소개중심형</span>
             ${productCount > 0 ? `<span>상품 ${productCount}개</span>` : ""}
           </div>
-        </section>
+        </section>` : ""}
       </article>
       ${contactHtml}
       <section id="company" class="info-card" data-section="company_intro"><h2>기업 소개</h2><p>${escapeHtml(content.company_intro)}</p></section>
       <section class="info-card profile-strength-card" data-section="core_strengths">
         <h2>핵심 강점</h2>
-        <ul class="strength-grid">${coreStrengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n")}</ul>
+        <ul class="${strengthClassName}">${coreStrengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n")}</ul>
       </section>
       ${historyHtml}
       ${portfolioHtml}
@@ -801,6 +911,10 @@ dd {
   border-left: 4px solid var(--primary);
 }
 
+.strength-grid-list {
+  grid-template-columns: 1fr;
+}
+
 .profile-strength-card {
   background: transparent;
   border: 0;
@@ -818,6 +932,10 @@ dd {
 .timeline {
   display: grid;
   gap: 14px;
+}
+
+.timeline-compact {
+  gap: 8px;
 }
 
 .timeline li {
@@ -840,6 +958,10 @@ dd {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.card-list {
+  grid-template-columns: 1fr;
 }
 
 .portfolio-card {
@@ -866,6 +988,32 @@ dd {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
+}
+
+.product-card-list-3 .product-profile-card {
+  width: min(100%, 180px);
+}
+
+.profile-page[data-content-density="compact"] .info-card,
+.profile-page[data-content-density="compact"] .contact-cta {
+  margin-top: 16px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
+.profile-page[data-content-density="compact"] .profile-cover {
+  height: 260px;
+}
+
+.profile-page[data-content-density="rich"] .info-card,
+.profile-page[data-content-density="rich"] .contact-cta {
+  padding-top: 38px;
+  padding-bottom: 38px;
+}
+
+.profile-page[data-content-density="rich"] .strength-grid,
+.profile-page[data-content-density="rich"] .card-grid {
+  gap: 16px;
 }
 
 .product-profile-card {

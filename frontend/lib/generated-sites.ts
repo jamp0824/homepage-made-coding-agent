@@ -50,6 +50,12 @@ export type GeneratedContent = {
     id: string;
     visible: boolean;
   }>;
+  section_visibility?: Record<string, boolean>;
+  section_layout?: Record<string, string>;
+  content_density?: "compact" | "standard" | "rich";
+  content_source?: string;
+  draft_id?: string;
+  confirmed_at?: string;
 };
 
 export type GeneratedMetadata = {

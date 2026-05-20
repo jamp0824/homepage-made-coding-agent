@@ -18,6 +18,36 @@
     "history",
     "portfolio"
   ],
+  "editable_slots": [
+    "company_summary",
+    "contact_info",
+    "company_intro",
+    "core_strengths",
+    "history",
+    "portfolio",
+    "featured_products",
+    "contact_cta"
+  ],
+  "required_visible_sections": [
+    "hero",
+    "company_intro",
+    "core_strengths",
+    "contact_cta"
+  ],
+  "allowed_section_layout": {
+    "core_strengths": ["list", "grid_2"],
+    "history": ["timeline", "compact"],
+    "portfolio": ["list", "grid_2"],
+    "featured_products": ["grid_2", "grid_3"]
+  },
+  "default_section_layout": {
+    "core_strengths": "grid_2",
+    "history": "timeline",
+    "portfolio": "grid_2",
+    "featured_products": "grid_2"
+  },
+  "allowed_content_density": ["compact", "standard", "rich"],
+  "default_content_density": "standard",
   "asset_theme_defaults": {
     "IT·소프트웨어": "it_software",
     "제조업": "manufacturing",

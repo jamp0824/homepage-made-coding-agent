@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/conversation-session.schema.json",
+  "title": "ConversationSession",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "draft_id",
+    "current_step",
+    "messages",
+    "pending_questions",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "draft_id": { "type": "string", "minLength": 1 },
+    "initial_prompt": { "type": "string" },
+    "current_step": {
+      "type": "string",
+      "enum": [
+        "type",
+        "business_info",
+        "company_profile",
+        "ai_draft",
+        "edit_publish",
+        "done"
+      ]
+    },
+    "pending_questions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "last_assistant_message": { "type": "string" },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "content", "created_at"],
+        "properties": {
+          "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+          "content": { "type": "string" },
+          "patch": { "type": "object", "additionalProperties": true },
+          "created_at": { "type": "string" }
+        }
+      }
+    },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" }
+  }
+}

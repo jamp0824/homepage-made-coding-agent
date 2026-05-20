@@ -10,7 +10,7 @@
 - template_id: company_intro_basic
 - final_status: generated
 - retry_count: 1
-- completed_at: 2026-05-18T17:00:19.768Z
+- completed_at: 2026-05-20T15:48:52.427Z
 
 ## Validation
 

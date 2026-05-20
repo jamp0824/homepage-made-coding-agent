@@ -10,12 +10,13 @@
 - template_id: company_intro_basic
 - final_status: manual_required
 - retry_count: 1
-- completed_at: 2026-05-18T16:59:54.287Z
+- completed_at: 2026-05-20T15:48:31.241Z
 
 ## Validation
 
 - passed: false
 
+- core_strengths count must match request.core_strengths
 - Unsupported high-risk phrase found: 업계 1위
 - Unsupported high-risk phrase found: 수상 경력
 

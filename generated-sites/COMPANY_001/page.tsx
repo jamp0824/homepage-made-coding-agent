@@ -13,9 +13,15 @@ export default function GeneratedHomepage() {
   const contactEntries = Object.entries(content.contact || {});
   const hasCoverImage = Boolean(content.cover_image_url);
   const productCount = content.products.length;
+  const visibleSections = new Set(content.sections || []);
+  const layout = content.section_layout || {};
+  const strengthClassName = layout.core_strengths === "list" ? "strength-grid strength-grid-list" : "strength-grid";
+  const historyClassName = layout.history === "compact" ? "timeline timeline-compact" : "timeline";
+  const portfolioClassName = layout.portfolio === "list" ? "card-grid card-list" : "card-grid";
+  const productClassName = layout.featured_products === "grid_3" ? "product-card-list product-card-list-3" : "product-card-list";
 
   return (
-    <main className="profile-page" data-template={content.template_id} data-template-variant={content.template_variant} data-asset-theme={assets.asset_theme}>
+    <main className="profile-page" data-template={content.template_id} data-template-variant={content.template_variant} data-content-density={content.content_density} data-asset-theme={assets.asset_theme}>
       <header className="profile-nav" aria-label="생성 홈페이지 탐색">
         <div className="profile-brand-mark" aria-hidden="true">H</div>
         <nav aria-label="페이지 섹션">
@@ -26,20 +32,16 @@ export default function GeneratedHomepage() {
       </header>
       <div className="profile-action-row">
         <a className="profile-back-link" href="/">← 뒤로</a>
-        <div className="profile-actions" aria-label="페이지 액션">
-          <button type="button" aria-label="좋아요">♡</button>
-          <button type="button" aria-label="공유">↗</button>
-        </div>
       </div>
       <article className="profile-hero-card">
         <section className="profile-cover" data-section="hero">
           {hasCoverImage ? <img src={content.cover_image_url} alt="" /> : <div className="cover-fallback" aria-hidden="true" />}
         </section>
+        {visibleSections.has("company_summary") ? (
         <section className="profile-summary" data-section="company_summary">
           <p className="eyebrow">{content.industry}</p>
           <div className="profile-title-row">
             <h1>{content.company_name}</h1>
-            <span>generated</span>
           </div>
           <p>{content.one_line_intro}</p>
           <div className="tag-row">
@@ -51,8 +53,9 @@ export default function GeneratedHomepage() {
             {productCount > 0 ? <span>상품 {productCount}개</span> : null}
           </div>
         </section>
+        ) : null}
       </article>
-      {contactEntries.length > 0 ? (
+      {contactEntries.length > 0 && visibleSections.has("contact_info") ? (
         <section className="info-card profile-info-card" data-section="contact_info">
           <h2>기업 정보</h2>
           <dl className="contact-list">
@@ -71,30 +74,30 @@ export default function GeneratedHomepage() {
       </section>
       <section className="info-card profile-strength-card" data-section="core_strengths">
         <h2>핵심 강점</h2>
-        <ul className="strength-grid">
+        <ul className={strengthClassName}>
           {content.core_strengths.map((item) => <li key={item}>{item}</li>)}
         </ul>
       </section>
-      {content.history.length > 0 ? (
+      {content.history.length > 0 && visibleSections.has("history") ? (
         <section className="info-card" data-section="history">
           <h2>연혁</h2>
-          <ol className="timeline">
+          <ol className={historyClassName}>
             {content.history.map((item) => <li key={item.year + item.text}><strong>{item.year}</strong><span>{item.text}</span></li>)}
           </ol>
         </section>
       ) : null}
-      {content.portfolio.length > 0 ? (
+      {content.portfolio.length > 0 && visibleSections.has("portfolio") ? (
         <section className="info-card" data-section="portfolio">
           <h2>포트폴리오</h2>
-          <div className="card-grid">
+          <div className={portfolioClassName}>
             {content.portfolio.map((item) => <article className="portfolio-card" key={item.title || item.description}><span className="card-icon" aria-hidden="true">□</span><h3>{item.title}</h3><p>{item.description}</p></article>)}
           </div>
         </section>
       ) : null}
-      {content.products.length > 0 ? (
+      {content.products.length > 0 && visibleSections.has("featured_products") ? (
         <section id="products" className="info-card" data-section="featured_products">
           <h2>주요 상품 <span className="count-badge">{productCount}</span></h2>
-          <div className="product-card-list">
+          <div className={productClassName}>
             {content.products.map((product) => (
               <article className="product-profile-card" key={product.name}>
                 <div className="product-image-frame">
