@@ -24,7 +24,7 @@
     "warnings": []
   },
   "retry_count": 1,
-  "completed_at": "2026-05-20T15:42:46.952Z",
+  "completed_at": "2026-05-20T15:49:21.400Z",
   "error_type": "agent_failed",
   "errors": [
     "goose recipe failed"
