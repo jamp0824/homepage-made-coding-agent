@@ -9,8 +9,8 @@
 - homepage_type: product
 - template_id: product_basic
 - final_status: generated
-- retry_count: 1
-- completed_at: 2026-05-20T15:46:17.713Z
+- retry_count: 2
+- completed_at: 2026-05-21T07:14:40.975Z
 
 ## Validation
 

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/chat-session.schema.json",
+  "title": "ChatHomepageSession",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "status",
+    "messages",
+    "homepage_request",
+    "content_draft",
+    "last_assistant_message",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "session_id": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": [
+        "empty",
+        "collecting",
+        "draft_ready",
+        "previewing",
+        "generating",
+        "generated",
+        "manual_required",
+        "failed"
+      ]
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "content", "created_at"],
+        "properties": {
+          "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+          "content": { "type": "string" },
+          "action": { "$ref": "chat-action.schema.json" },
+          "created_at": { "type": "string" }
+        }
+      }
+    },
+    "homepage_request": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "content_draft": {
+      "$ref": "content-draft.schema.json"
+    },
+    "last_assistant_message": { "type": "string" },
+    "generation_job": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" }
+  }
+}

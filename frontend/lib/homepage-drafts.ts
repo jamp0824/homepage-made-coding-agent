@@ -92,6 +92,10 @@ export type DraftCreatePayload = Partial<HomepageDraft> & {
 export type DraftPatch = Partial<
   Pick<
     HomepageDraft,
+    | "company_name"
+    | "industry"
+    | "business_type"
+    | "main_business_description"
     | "one_line_intro"
     | "company_intro"
     | "core_strengths"
@@ -490,6 +494,21 @@ function buildPatchFromMessage(draft: HomepageDraft, message: string) {
     patch.content_density = "standard";
   }
 
+  const companyName = extractFieldChange(message, ["회사\\s*이름", "회사명", "상호"]);
+  if (companyName) {
+    patch.company_name = companyName;
+    if (draft.company_intro.includes(draft.company_name)) {
+      patch.company_intro = normalizeCompanyNameJosa(
+        draft.company_intro.replaceAll(draft.company_name, companyName),
+        companyName,
+      );
+    }
+  }
+  const industry = extractFieldChange(message, ["업종"]);
+  if (industry) patch.industry = industry;
+  const businessType = extractFieldChange(message, ["업태", "사업\\s*유형"]);
+  if (businessType) patch.business_type = businessType;
+
   const section_layout: Record<string, string> = {};
   let layoutChanged = false;
   if (/카드|그리드|grid|2열/.test(message)) {
@@ -613,6 +632,22 @@ function sanitizeDraftPatch(draft: HomepageDraft, patch: DraftPatch): DraftPatch
     const value = cleanText(patch.one_line_intro);
     if (value && !hasForbiddenPhrase(value)) safePatch.one_line_intro = value;
   }
+  if (typeof patch.company_name === "string") {
+    const value = cleanText(patch.company_name);
+    if (value && !hasForbiddenPhrase(value)) safePatch.company_name = value;
+  }
+  if (typeof patch.industry === "string") {
+    const value = cleanText(patch.industry);
+    if (value && !hasForbiddenPhrase(value)) safePatch.industry = value;
+  }
+  if (typeof patch.business_type === "string") {
+    const value = cleanText(patch.business_type);
+    if (value && !hasForbiddenPhrase(value)) safePatch.business_type = value;
+  }
+  if (typeof patch.main_business_description === "string") {
+    const value = cleanText(patch.main_business_description);
+    if (value && !hasForbiddenPhrase(value)) safePatch.main_business_description = value;
+  }
   if (typeof patch.company_intro === "string") {
     const value = cleanText(patch.company_intro);
     if (value && !hasForbiddenPhrase(value)) safePatch.company_intro = value;
@@ -662,6 +697,30 @@ function sanitizeDraftPatch(draft: HomepageDraft, patch: DraftPatch): DraftPatch
 
 function hasForbiddenPhrase(value: string) {
   return forbiddenPhrases.some((phrase) => value.includes(phrase));
+}
+
+function extractFieldChange(message: string, fieldPatterns: string[]) {
+  const fieldPattern = fieldPatterns.join("|");
+  const regexes = [
+    new RegExp(`(?:${fieldPattern})(?:은|는|을|를)?\\s*(?:.+?(?:아니라|말고)\\s*)?(.+?)(?:으로|로)\\s*(?:바꿔|변경|수정|해줘|해주세요|해)`, "i"),
+    new RegExp(`(?:${fieldPattern})(?:은|는|을|를)?\\s*(?:[:：]|=)?\\s*([^,\\.\\n]+)`, "i"),
+  ];
+
+  for (const regex of regexes) {
+    const match = message.match(regex);
+    if (!match?.[1]) continue;
+    const value = cleanText(match[1])
+      .replace(/^(은|는|을|를)\s*/, "")
+      .replace(/\s*(으로|로|라고|으로요|로요)$/, "");
+    if (value.length >= 2) return value;
+  }
+  return "";
+}
+
+function normalizeCompanyNameJosa(value: string, companyName: string) {
+  return value
+    .replaceAll(`${companyName}은`, `${companyName}는`)
+    .replaceAll(`${companyName}을`, `${companyName}를`);
 }
 
 function diffRecord(

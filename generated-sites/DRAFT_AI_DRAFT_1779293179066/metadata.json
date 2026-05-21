@@ -1,0 +1,11 @@
+{
+  "request_id": "REQ_DRAFT_1779293179066",
+  "company_id": "DRAFT_AI_DRAFT_1779293179066",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "template_variant": "result_style_v1",
+  "generated_at": "2026-05-20T16:08:00.168Z",
+  "generator": "static-mvp-generator",
+  "model_provider": "goose_agent",
+  "model_name": "configured-goose-model"
+}

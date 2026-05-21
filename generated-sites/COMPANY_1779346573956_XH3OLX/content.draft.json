@@ -1,0 +1,41 @@
+{
+  "hero_title": "AI 기반 재고관리 솔루션",
+  "one_line_intro": "중소기업의 재고 운영을 돕는 업무 자동화 서비스",
+  "company_intro": "치킨텐더스 주식회사는 중소기업의 입출고와 발주 업무를 돕는 AI 기반 재고관리 솔루션입니다.",
+  "business_summary": "IT·소프트웨어 분야에서 AI 기반 재고관리 솔루션을 중심으로 사업을 소개합니다.",
+  "hero_image_theme": "software_dashboard",
+  "cta_text": "치킨텐더스 주식회사의 사업과 서비스가 궁금하시다면 문의해 주세요.",
+  "core_strengths": [
+    "AI 기반 재고 관리",
+    "입출고 업무 효율화",
+    "발주 업무 자동화"
+  ],
+  "tags": [
+    "IT·소프트웨어",
+    "AI",
+    "기반",
+    "재고관리",
+    "솔루션"
+  ],
+  "hero_image_keywords": [
+    "소프트웨어",
+    "대시보드",
+    "업무 자동화"
+  ],
+  "section_visibility": {
+    "company_summary": true,
+    "company_intro": true,
+    "core_strengths": true,
+    "contact_cta": true,
+    "history": false,
+    "portfolio": false,
+    "featured_products": false
+  },
+  "section_layout": {
+    "core_strengths": "grid_2",
+    "history": "timeline",
+    "portfolio": "list",
+    "featured_products": "grid_2"
+  },
+  "content_density": "standard"
+}

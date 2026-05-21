@@ -1,0 +1,69 @@
+{
+  "request_id": "REQ_CHAT_1779346573956_XH3OLX",
+  "company_id": "COMPANY_1779346573956_XH3OLX",
+  "request_path": "/Users/junonan/Downloads/goose-homepage-builder-harness/harness/tmp/chat-session-requests/CHAT_JOB_1779346574186.json",
+  "generated_path": "generated-sites/COMPANY_1779346573956_XH3OLX",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "final_status": "generated",
+  "retry_count": 1,
+  "model_provider": "local_placeholder",
+  "model_name": "deterministic-template",
+  "validation_result": {
+    "passed": true,
+    "errors": [],
+    "warnings": []
+  },
+  "build_result": {
+    "passed": true,
+    "command": "npm run build",
+    "errors": []
+  },
+  "error_type": null,
+  "errors": [],
+  "timeline": [
+    {
+      "step": "requested",
+      "status": "completed",
+      "message": "Request file was accepted by the runner.",
+      "retry_count": 1,
+      "error_type": null
+    },
+    {
+      "step": "validating_request",
+      "status": "completed",
+      "message": "Request schema validation passed before generation.",
+      "retry_count": 1,
+      "error_type": null
+    },
+    {
+      "step": "agent_running",
+      "status": "completed",
+      "message": "Homepage files were generated under generated-sites/{company_id}.",
+      "retry_count": 1,
+      "error_type": null
+    },
+    {
+      "step": "validating_output",
+      "status": "completed",
+      "message": "Generated-site validation passed.",
+      "retry_count": 1,
+      "error_type": null
+    },
+    {
+      "step": "building",
+      "status": "completed",
+      "message": "Next.js build passed.",
+      "retry_count": 1,
+      "error_type": null
+    },
+    {
+      "step": "generated",
+      "status": "completed",
+      "message": "Final status recorded as generated.",
+      "retry_count": 1,
+      "error_type": null
+    }
+  ],
+  "completed_at": "2026-05-21T06:56:25.939Z"
+}

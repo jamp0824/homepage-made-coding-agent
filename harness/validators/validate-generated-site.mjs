@@ -484,12 +484,20 @@ function validateGeneratedSectionControls({ content, errors }) {
 }
 
 function validateRequestBoundCopy({ content, request, errors }) {
+  const requestContentDraft =
+    request.content_draft && typeof request.content_draft === "object" && !Array.isArray(request.content_draft)
+      ? request.content_draft
+      : {};
   if (typeof request.one_line_intro === "string" && request.one_line_intro.trim() !== "") {
     if (content.one_line_intro !== request.one_line_intro) {
       errors.push("one_line_intro must match request.one_line_intro exactly");
     }
-    if (content.hero_title !== request.one_line_intro) {
-      errors.push("hero_title must match request.one_line_intro exactly when provided");
+    const expectedHeroTitle =
+      typeof requestContentDraft.hero_title === "string" && requestContentDraft.hero_title.trim() !== ""
+        ? requestContentDraft.hero_title
+        : request.one_line_intro;
+    if (content.hero_title !== expectedHeroTitle) {
+      errors.push("hero_title must match request.content_draft.hero_title or request.one_line_intro exactly");
     }
   }
   if (typeof request.company_intro === "string" && request.company_intro.trim() !== "") {

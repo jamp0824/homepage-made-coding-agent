@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/content-draft.schema.json",
+  "title": "ContentDraft",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "hero_title": { "type": "string" },
+    "one_line_intro": { "type": "string" },
+    "company_intro": { "type": "string" },
+    "business_summary": { "type": "string" },
+    "core_strengths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 10
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 12
+    },
+    "section_visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "company_summary": { "type": "boolean" },
+        "contact_info": { "type": "boolean" },
+        "company_intro": { "type": "boolean" },
+        "core_strengths": { "type": "boolean" },
+        "history": { "type": "boolean" },
+        "portfolio": { "type": "boolean" },
+        "featured_products": { "type": "boolean" },
+        "product_area": { "type": "boolean" },
+        "product_registration_cta": { "type": "boolean" },
+        "contact_cta": { "type": "boolean" }
+      }
+    },
+    "section_layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "core_strengths": { "type": "string", "enum": ["list", "grid_2"] },
+        "history": { "type": "string", "enum": ["timeline", "compact"] },
+        "portfolio": { "type": "string", "enum": ["list", "grid_2"] },
+        "featured_products": { "type": "string", "enum": ["grid_2", "grid_3"] },
+        "product_area": { "type": "string", "enum": ["grid_2", "grid_3"] }
+      }
+    },
+    "content_density": { "type": "string", "enum": ["compact", "standard", "rich"] },
+    "hero_image_theme": { "type": "string" },
+    "hero_image_keywords": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 8
+    },
+    "cta_text": { "type": "string" }
+  }
+}

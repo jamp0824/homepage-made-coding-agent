@@ -116,6 +116,9 @@
       "type": "string",
       "enum": ["request_only", "ai_suggested", "ai_suggested_user_confirmed"]
     },
+    "content_draft": {
+      "$ref": "content-draft.schema.json"
+    },
     "draft_id": { "type": "string" },
     "confirmed_at": { "type": "string" },
     "preferred_style": { "type": "string", "enum": ["clean", "modern", "basic", "professional"] },

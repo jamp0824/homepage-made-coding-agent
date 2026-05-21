@@ -1,0 +1,9 @@
+{
+  "asset_theme": "software_dashboard",
+  "hero_image": "software_dashboard/neutral-cover-fallback",
+  "section_images": {
+    "company_intro": "software_dashboard/company-intro-placeholder",
+    "core_strengths": "software_dashboard/strengths-placeholder"
+  },
+  "fallback_used": true
+}

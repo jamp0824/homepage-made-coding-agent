@@ -1,0 +1,36 @@
+{
+  "request_id": "REQ_CHAT_1779346573956_XH3OLX",
+  "company_id": "COMPANY_1779346573956_XH3OLX",
+  "status": "generated",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "generated_path": "generated-sites/COMPANY_1779346573956_XH3OLX",
+  "homepage_url": "/homepage/COMPANY_1779346573956_XH3OLX",
+  "model_provider": "local_placeholder",
+  "model_name": "deterministic-template",
+  "generated_files": [
+    "agent-run-report.json",
+    "agent-run-report.md",
+    "assets.json",
+    "content.draft.json",
+    "content.json",
+    "generation-result.json",
+    "index.html",
+    "metadata.json",
+    "page.tsx",
+    "styles.css",
+    "validation-report.json"
+  ],
+  "build_result": {
+    "passed": true,
+    "command": "npm run build",
+    "errors": []
+  },
+  "validation_result": {
+    "passed": true,
+    "errors": [],
+    "warnings": []
+  },
+  "retry_count": 1,
+  "completed_at": "2026-05-21T06:56:25.939Z"
+}

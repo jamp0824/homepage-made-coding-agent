@@ -33,6 +33,7 @@ const allowedTopLevelFields = new Set([
   "section_layout",
   "content_density",
   "content_source",
+  "content_draft",
   "draft_id",
   "confirmed_at",
   "preferred_style",
@@ -175,6 +176,7 @@ if (!request || typeof request !== "object" || Array.isArray(request)) {
   ) {
     errors.push("content_source must be request_only, ai_suggested, or ai_suggested_user_confirmed");
   }
+  if ("content_draft" in request) validateContentDraft(request.content_draft, errors);
   if ("draft_id" in request && typeof request.draft_id !== "string") {
     errors.push("draft_id must be a string");
   }
@@ -235,6 +237,90 @@ function validateContact(contact, outputErrors) {
     if (typeof contact[field] !== "string") {
       outputErrors.push(`contact.${field} must be a string`);
     }
+  }
+}
+
+function validateContentDraft(contentDraft, outputErrors) {
+  if (!contentDraft || typeof contentDraft !== "object" || Array.isArray(contentDraft)) {
+    outputErrors.push("content_draft must be an object");
+    return;
+  }
+
+  const allowedFields = new Set([
+    "hero_title",
+    "one_line_intro",
+    "company_intro",
+    "business_summary",
+    "core_strengths",
+    "tags",
+    "section_visibility",
+    "section_layout",
+    "content_density",
+    "hero_image_theme",
+    "hero_image_keywords",
+    "cta_text",
+  ]);
+  for (const field of Object.keys(contentDraft)) {
+    if (!allowedFields.has(field)) {
+      outputErrors.push(`content_draft has unsupported field: ${field}`);
+    }
+  }
+
+  for (const field of [
+    "hero_title",
+    "one_line_intro",
+    "company_intro",
+    "business_summary",
+    "hero_image_theme",
+    "cta_text",
+  ]) {
+    if (field in contentDraft && typeof contentDraft[field] !== "string") {
+      outputErrors.push(`content_draft.${field} must be a string`);
+    }
+  }
+
+  if ("core_strengths" in contentDraft) {
+    if (!Array.isArray(contentDraft.core_strengths)) {
+      outputErrors.push("content_draft.core_strengths must be an array");
+    } else {
+      if (contentDraft.core_strengths.length > 10) {
+        outputErrors.push("content_draft.core_strengths must contain at most 10 items");
+      }
+      contentDraft.core_strengths.forEach((item, index) => {
+        if (typeof item !== "string" || item.trim() === "") {
+          outputErrors.push(`content_draft.core_strengths[${index}] must be a non-empty string`);
+        }
+      });
+    }
+  }
+
+  if ("tags" in contentDraft) {
+    if (!Array.isArray(contentDraft.tags)) {
+      outputErrors.push("content_draft.tags must be an array");
+    } else if (contentDraft.tags.length > 12) {
+      outputErrors.push("content_draft.tags must contain at most 12 items");
+    }
+  }
+
+  if ("hero_image_keywords" in contentDraft) {
+    if (!Array.isArray(contentDraft.hero_image_keywords)) {
+      outputErrors.push("content_draft.hero_image_keywords must be an array");
+    } else if (contentDraft.hero_image_keywords.length > 8) {
+      outputErrors.push("content_draft.hero_image_keywords must contain at most 8 items");
+    }
+  }
+
+  if ("section_visibility" in contentDraft) {
+    validateSectionVisibility(contentDraft.section_visibility, outputErrors, "content_draft.");
+  }
+  if ("section_layout" in contentDraft) {
+    validateSectionLayout(contentDraft.section_layout, outputErrors, "content_draft.");
+  }
+  if (
+    "content_density" in contentDraft &&
+    !["compact", "standard", "rich"].includes(contentDraft.content_density)
+  ) {
+    outputErrors.push("content_draft.content_density must be compact, standard, or rich");
   }
 }
 

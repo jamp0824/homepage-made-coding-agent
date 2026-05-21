@@ -98,6 +98,7 @@
   },
   "content_density": "standard",
   "content_source": "request_only",
+  "content_draft_applied": false,
   "draft_id": "",
   "confirmed_at": ""
 }

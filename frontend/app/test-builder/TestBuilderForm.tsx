@@ -109,20 +109,22 @@ const homepageTypeOptions: Array<{
   description: string;
   icon: string;
   chips: string[];
+  disabled?: boolean;
 }> = [
   {
     value: "company_intro",
-    title: "회사소개중심형",
-    description: "회사 소개와 포트폴리오를 중심으로 보여주는 홈페이지입니다.",
+    title: "회사 소개 중심",
+    description: "result_template 안에서 회사 소개, 강점, 연혁, 포트폴리오를 강조합니다.",
     icon: "▤",
-    chips: ["회사 스토리", "포트폴리오", "연혁"],
+    chips: ["회사 소개", "강점", "연혁/포트폴리오"],
   },
   {
     value: "product",
-    title: "상품중심형",
-    description: "등록한 상품을 중심으로 보여주는 홈페이지입니다.",
+    title: "상품 정보 중심",
+    description: "상품 중심 구성은 별도 기준 템플릿 확정 후 지원합니다.",
     icon: "◇",
-    chips: ["상품 갤러리", "견적/구매 강조", "추후 지원"],
+    chips: ["준비 중", "템플릿 확정 필요"],
+    disabled: true,
   },
 ];
 
@@ -174,7 +176,7 @@ export default function TestBuilderForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildDraftPayload(form)),
       });
-      const body = (await response.json()) as DraftResponse & { error?: string };
+      const body = await readJsonResponse<DraftResponse & { error?: string }>(response);
       if (!response.ok) {
         setError(body.error || "초안 생성 실패");
         return;
@@ -201,7 +203,7 @@ export default function TestBuilderForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: chatInput }),
       });
-      const body = (await response.json()) as MessageResponse;
+      const body = await readJsonResponse<MessageResponse>(response);
       if (!response.ok) {
         setError(body.error || "대화 수정 실패");
         return;
@@ -231,7 +233,7 @@ export default function TestBuilderForm() {
           generation_mode: "auto",
         }),
       });
-      const body = (await response.json()) as GenerationResponse;
+      const body = await readJsonResponse<GenerationResponse>(response);
       setGeneration(body);
       if (!response.ok) {
         setError(body.error || "최종 생성 실패");
@@ -313,18 +315,13 @@ function ComposeStep({
   isDrafting: boolean;
   updateField: <K extends keyof BuilderForm>(field: K, value: BuilderForm[K]) => void;
 }) {
-  const canCreateDraft =
-    form.initialPrompt.trim() &&
-    form.companyName.trim() &&
-    form.industry.trim() &&
-    form.businessType.trim() &&
-    form.mainBusinessDescription.trim();
+  const canCreateDraft = Boolean(form.initialPrompt.trim());
 
   return (
     <section className="make-compose">
       <div className="make-compose-heading">
         <h1>어떤 홈페이지를 만들까요?</h1>
-        <p>요청을 입력하면 고정 템플릿 안에서 바로 초안 홈페이지를 구성합니다.</p>
+        <p>요청을 입력하면 Goose가 고정 템플릿 슬롯에 맞춰 초안 홈페이지를 구성합니다.</p>
       </div>
 
       <div className="make-composer-card">
@@ -338,7 +335,7 @@ function ComposeStep({
           />
         </label>
         <div className="make-composer-footer">
-          <span>고정 템플릿 기반 초안</span>
+          <span>Goose fixed template draft</span>
           <button
             className="ref-primary-button"
             disabled={isDrafting || !canCreateDraft}
@@ -354,8 +351,8 @@ function ComposeStep({
 
       <section className="make-homepage-types" aria-label="홈페이지 형식 선택">
         <div className="make-section-title">
-          <h2>홈페이지 형식</h2>
-          <p>초안 생성 후에도 대화로 표현 방식을 바꿀 수 있습니다.</p>
+          <h2>고정 템플릿 구성 방향</h2>
+          <p>템플릿은 result_template 하나로 고정하고, 초안에서 강조할 콘텐츠만 선택합니다.</p>
         </div>
         <div className="make-type-card-grid" role="radiogroup" aria-label="홈페이지 형식">
           {homepageTypeOptions.map((option) => {
@@ -363,10 +360,14 @@ function ComposeStep({
             return (
               <button
                 aria-checked={selected}
-                className={`make-type-card${selected ? " make-type-card-selected" : ""}`}
-                disabled={isDrafting}
+                className={`make-type-card${selected ? " make-type-card-selected" : ""}${
+                  option.disabled ? " make-type-card-disabled" : ""
+                }`}
+                disabled={isDrafting || option.disabled}
                 key={option.value}
-                onClick={() => updateField("homepageType", option.value)}
+                onClick={() => {
+                  if (!option.disabled) updateField("homepageType", option.value);
+                }}
                 role="radio"
                 type="button"
               >
@@ -386,11 +387,8 @@ function ComposeStep({
         </div>
       </section>
 
-      <section className="make-info-card">
-        <div className="make-section-title">
-          <h2>기본 정보</h2>
-          <p>초안에 반드시 필요한 최소 정보입니다.</p>
-        </div>
+      <details className="make-additional-info">
+        <summary>선택 정보</summary>
         <div className="make-info-grid">
           <Field
             disabled={isDrafting}
@@ -418,12 +416,6 @@ function ComposeStep({
               onChange={(event) => updateField("mainBusinessDescription", event.target.value)}
             />
           </label>
-        </div>
-      </section>
-
-      <details className="make-additional-info">
-        <summary>추가 정보</summary>
-        <div className="make-info-grid">
           <Field
             disabled={isDrafting}
             label="연락처"
@@ -497,27 +489,36 @@ function BuilderStep({
 
   return (
     <section className="builder-workspace" aria-live="polite">
-      <aside className="builder-chat-panel">
-        <div className="builder-toolbar">
+      <header className="make-builder-appbar">
+        <div className="make-appbar-left">
+          <button className="builder-back-button" onClick={restart} type="button" aria-label="첫 화면으로 돌아가기">
+            ‹
+          </button>
           <div>
-            <span>{draft.homepage_type === "company_intro" ? "회사소개중심형" : "상품중심형"}</span>
-            <strong>초안 편집</strong>
-          </div>
-          <div className="builder-toolbar-actions">
-            <button className="ref-secondary-button" onClick={restart} type="button">
-              다시 초안
-            </button>
-            <button
-              className="ref-primary-button"
-              disabled={isGenerating || !draft.validation_result.passed}
-              onClick={generateFromDraft}
-              type="button"
-            >
-              {isGenerating ? "생성 중..." : "생성"}
-            </button>
+            <strong>{draft.company_name}</strong>
+            <span>Goose fixed template draft</span>
           </div>
         </div>
+        <div className="make-appbar-center" aria-label="작업 보기">
+          <span className="make-appbar-tab make-appbar-tab-active">Preview</span>
+          <span className="make-appbar-tab">Template</span>
+        </div>
+        <div className="make-appbar-right">
+          <span className="make-template-badge">
+            {draft.homepage_type === "company_intro" ? "회사소개형" : "상품형"}
+          </span>
+          <button
+            className="ref-primary-button"
+            disabled={isGenerating || !draft.validation_result.passed}
+            onClick={generateFromDraft}
+            type="button"
+          >
+            {isGenerating ? "생성 중..." : "생성"}
+          </button>
+        </div>
+      </header>
 
+      <aside className="builder-chat-panel">
         {error ? <div className="draft-error-banner">{error}</div> : null}
         {isGenerating ? <StatusBanner title="홈페이지 생성 중" text="확정 draft를 request JSON으로 변환하고 검증을 실행합니다." /> : null}
         {!draft.validation_result.passed ? (
@@ -530,11 +531,6 @@ function BuilderStep({
         {generated ? <GenerationResult job={generation.job} /> : null}
 
         <div className="builder-panel-body">
-          <div className="assistant-summary-card">
-            <strong>AI</strong>
-            <p>{session?.last_assistant_message || "고정 템플릿 구조에 맞춰 초안을 만들었습니다."}</p>
-          </div>
-
           <div className="draft-message-list">
             {(session?.messages || []).map((message, index) => (
               <div className={`draft-message draft-message-${message.role}`} key={`${message.created_at}-${index}`}>
@@ -543,7 +539,9 @@ function BuilderStep({
               </div>
             ))}
           </div>
+        </div>
 
+        <div className="builder-composer">
           <div className="draft-quick-actions">
             {quickActions.map((item) => (
               <button key={item} onClick={() => setChatInput(item)} type="button">
@@ -551,31 +549,22 @@ function BuilderStep({
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="builder-composer">
-          <label className="ref-field">
-            <span>수정 요청</span>
+          <div className="make-chat-input">
             <textarea
+              aria-label="초안 수정 요청"
+              placeholder="수정 요청을 입력하세요"
               value={chatInput}
               onChange={(event) => setChatInput(event.target.value)}
               onKeyDown={handleComposerKeyDown}
             />
-          </label>
-          <button className="ref-primary-button" disabled={!canSend} onClick={sendMessage} type="button">
-            {isSending ? "반영 중..." : "요청 반영"}
-          </button>
+            <button aria-label="요청 반영" disabled={!canSend} onClick={sendMessage} type="button">
+              {isSending ? "..." : "↑"}
+            </button>
+          </div>
         </div>
       </aside>
 
       <section className="builder-preview-panel">
-        <div className="builder-preview-head">
-          <div>
-            <span>고정 템플릿 미리보기</span>
-            <strong>{draft.company_name}</strong>
-          </div>
-          <small>{draft.content_density}</small>
-        </div>
         <div className="builder-preview-frame">
           <DraftPreview draft={draft} />
         </div>
@@ -798,5 +787,20 @@ function contactLabel(key: string) {
       email: "이메일",
       website_url: "웹사이트",
     }[key] || key
+  );
+}
+
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return (await response.json()) as T;
+  }
+
+  const text = await response.text();
+  const htmlError = text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html");
+  throw new Error(
+    htmlError
+      ? "서버가 JSON 대신 HTML 오류 페이지를 반환했습니다. 개발 서버를 새로고침한 뒤 다시 시도해 주세요."
+      : text.slice(0, 240) || "서버 응답을 JSON으로 읽을 수 없습니다.",
   );
 }
