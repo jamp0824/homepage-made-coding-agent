@@ -142,6 +142,57 @@ generated-sites/COMPANY_001/agent-run-report.md
 npm run test:harness
 ```
 
+## Fixed Template Draft API
+
+대화형 고도화는 자유 템플릿 생성이 아니라 `result_template.png` 구조 안의 draft를 수정하는 방식으로 분리되어 있습니다.
+
+```text
+conversation
+-> content.draft.json
+-> user-confirmed request JSON
+-> scripts/run-homepage-builder.sh
+-> generated-sites/{company_id}
+```
+
+추가된 API:
+
+```text
+POST  /api/homepage-drafts                         # initial_prompt + 기업 정보로 초안 생성
+GET   /api/homepage-drafts/{draft_id}
+PATCH /api/homepage-drafts/{draft_id}
+POST  /api/homepage-drafts/{draft_id}/messages     # 대화 요청을 허용된 draft patch로 반영
+POST  /api/homepage-generation-jobs                # draft_id 확정 후 기존 생성 파이프라인 실행
+GET   /api/homepage-generation-jobs/{job_id}
+```
+
+Goose draft/edit agent는 새 디자인을 만들지 않고 아래 값만 조정합니다.
+
+```text
+one_line_intro
+company_intro
+core_strengths
+section_visibility
+section_layout
+content_density
+```
+
+`/test-builder`는 아래 UX로 연결되어 있습니다.
+
+```text
+start -> prompt -> draft-preview -> chat-edit -> confirm-generate -> done
+```
+
+`initial_prompt`는 draft/session 메타데이터에만 보관하고, 최종 공개 request JSON에는 포함하지 않습니다.
+
+Draft 검증:
+
+```bash
+npm run draft:validate -- harness/tmp/homepage-drafts/{draft_id}/content.draft.json
+npm run goose:draft -- harness/tmp/homepage-drafts/{draft_id}/content.draft.json "핵심 강점을 카드형으로 보여줘"
+```
+
+최종 생성은 여전히 기존 검증 명령을 통과해야 합니다.
+
 ## Pending Job Batch Runner
 
 여러 request JSON을 큐처럼 처리하려면 `jobs/pending/`에 request 파일을 넣고 실행합니다.

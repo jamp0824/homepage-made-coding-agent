@@ -35,6 +35,15 @@ const allowedStatuses = new Set([
   "build_failed",
   "manual_required",
 ]);
+const requiredVisibleSections = new Set(["company_intro", "core_strengths", "contact_cta"]);
+const allowedLayoutValues = {
+  core_strengths: new Set(["list", "grid_2"]),
+  history: new Set(["timeline", "compact"]),
+  portfolio: new Set(["list", "grid_2"]),
+  featured_products: new Set(["grid_2", "grid_3"]),
+  product_area: new Set(["grid_2", "grid_3"]),
+};
+const allowedContentDensities = new Set(["compact", "standard", "rich"]);
 
 const readJson = (filePath, errors) => {
   try {
@@ -119,6 +128,7 @@ if (content && metadata) {
   if ("template_variant" in metadata && typeof metadata.template_variant !== "string") {
     errors.push("metadata.json template_variant must be a string when present");
   }
+  validateGeneratedSectionControls({ content, errors });
 
   const expectedTemplate =
     content.homepage_type === "company_intro"
@@ -160,6 +170,8 @@ if (content && metadata) {
     if (content.company_name !== request.company_name) {
       errors.push("company_name must match request.company_name exactly");
     }
+    validateRequestBoundCopy({ content, request, errors });
+    validateRequestBoundSectionControls({ content, request, errors });
     validateRequestBoundTags({ content, request, errors });
     validateRequestBoundContact({ content, request, errors });
     validateRequestBoundCoverImage({ content, assets, request, errors });
@@ -201,7 +213,13 @@ if (content && metadata) {
     if ((!Array.isArray(request.products) || request.products.length === 0) && hasSection(content, "featured_products")) {
       errors.push("featured_products section generated even though request.products is empty");
     }
-    if (content.homepage_type === "company_intro" && Array.isArray(request.products) && request.products.length > 0 && !hasSection(content, "featured_products")) {
+    if (
+      content.homepage_type === "company_intro" &&
+      Array.isArray(request.products) &&
+      request.products.length > 0 &&
+      requestWantsSection(request, "featured_products") &&
+      !hasSection(content, "featured_products")
+    ) {
       errors.push("request.products was provided but featured_products section was not rendered");
     }
     if (Array.isArray(request.history) && request.history.length > 0 && !Array.isArray(content.history)) {
@@ -213,7 +231,7 @@ if (content && metadata) {
       const renderedHistory = new Set(
         content.history.map((item) => `${item.year}\n${item.text}`),
       );
-      if (requestHistory.length > 0 && !hasSection(content, "history")) {
+      if (requestHistory.length > 0 && requestWantsSection(request, "history") && !hasSection(content, "history")) {
         errors.push("request.history was provided but history section was not rendered");
       }
       for (const item of requestHistory) {
@@ -238,7 +256,7 @@ if (content && metadata) {
       const renderedPortfolio = new Set(
         content.portfolio.map((item) => `${item.title || ""}\n${item.description || ""}`),
       );
-      if (requestPortfolio.length > 0 && !hasSection(content, "portfolio")) {
+      if (requestPortfolio.length > 0 && requestWantsSection(request, "portfolio") && !hasSection(content, "portfolio")) {
         errors.push("request.portfolio was provided but portfolio section was not rendered");
       }
       for (const item of requestPortfolio) {
@@ -384,7 +402,7 @@ function validateRequestBoundContact({ content, request, errors }) {
   const allowedContactFields = new Set(["address", "phone", "email", "website_url"]);
   const requestEntries = Object.entries(requestContact).filter(([, value]) => Boolean(value));
 
-  if (requestEntries.length > 0 && !hasSection(content, "contact_info")) {
+  if (requestEntries.length > 0 && requestWantsSection(request, "contact_info") && !hasSection(content, "contact_info")) {
     errors.push("request.contact was provided but contact_info section was not rendered");
   }
 
@@ -425,4 +443,145 @@ function validateRequestBoundCoverImage({ content, assets, request, errors }) {
   if (!requestCover && assets?.hero_image && /^https?:\/\//.test(assets.hero_image)) {
     errors.push("External hero image generated without request.cover_image_url");
   }
+}
+
+function validateGeneratedSectionControls({ content, errors }) {
+  const contentDensity = content.content_density || "standard";
+  if (!allowedContentDensities.has(contentDensity)) {
+    errors.push(`content.json has unsupported content_density: ${contentDensity}`);
+  }
+
+  const layout =
+    content.section_layout && typeof content.section_layout === "object" && !Array.isArray(content.section_layout)
+      ? content.section_layout
+      : {};
+  for (const [section, value] of Object.entries(layout)) {
+    const allowed = allowedLayoutValues[section];
+    if (!allowed) {
+      errors.push(`content.json section_layout has unsupported section: ${section}`);
+      continue;
+    }
+    if (typeof value !== "string" || !allowed.has(value)) {
+      errors.push(`content.json section_layout.${section} has unsupported layout: ${value}`);
+    }
+  }
+
+  const manifest = Array.isArray(content.section_manifest) ? content.section_manifest : [];
+  const visibleSections = new Set(Array.isArray(content.sections) ? content.sections : []);
+  for (const item of manifest) {
+    if (!item || typeof item !== "object") continue;
+    if (typeof item.id !== "string" || typeof item.visible !== "boolean") {
+      errors.push("content.json section_manifest entries must include id and visible");
+      continue;
+    }
+    if (item.visible !== visibleSections.has(item.id)) {
+      errors.push(`section_manifest visible flag does not match sections for: ${item.id}`);
+    }
+    if (item.visible === false && requiredVisibleSections.has(item.id)) {
+      errors.push(`required section cannot be hidden: ${item.id}`);
+    }
+  }
+}
+
+function validateRequestBoundCopy({ content, request, errors }) {
+  const requestContentDraft =
+    request.content_draft && typeof request.content_draft === "object" && !Array.isArray(request.content_draft)
+      ? request.content_draft
+      : {};
+  if (typeof request.one_line_intro === "string" && request.one_line_intro.trim() !== "") {
+    if (content.one_line_intro !== request.one_line_intro) {
+      errors.push("one_line_intro must match request.one_line_intro exactly");
+    }
+    const expectedHeroTitle =
+      typeof requestContentDraft.hero_title === "string" && requestContentDraft.hero_title.trim() !== ""
+        ? requestContentDraft.hero_title
+        : request.one_line_intro;
+    if (content.hero_title !== expectedHeroTitle) {
+      errors.push("hero_title must match request.content_draft.hero_title or request.one_line_intro exactly");
+    }
+  }
+  if (typeof request.company_intro === "string" && request.company_intro.trim() !== "") {
+    if (content.company_intro !== request.company_intro) {
+      errors.push("company_intro must match request.company_intro exactly");
+    }
+  }
+  if (Array.isArray(request.core_strengths) && request.core_strengths.length > 0) {
+    const rendered = Array.isArray(content.core_strengths) ? content.core_strengths : [];
+    if (rendered.length !== request.core_strengths.length) {
+      errors.push("core_strengths count must match request.core_strengths");
+      return;
+    }
+    request.core_strengths.forEach((item, index) => {
+      if (rendered[index] !== item) {
+        errors.push(`core_strengths[${index}] must match request.core_strengths exactly`);
+      }
+    });
+  }
+}
+
+function validateRequestBoundSectionControls({ content, request, errors }) {
+  if (request.content_density && content.content_density !== request.content_density) {
+    errors.push("content_density must match request.content_density exactly");
+  }
+  if (request.content_source && content.content_source !== request.content_source) {
+    errors.push("content_source must match request.content_source exactly");
+  }
+
+  const requestLayout =
+    request.section_layout && typeof request.section_layout === "object" && !Array.isArray(request.section_layout)
+      ? request.section_layout
+      : {};
+  const contentLayout =
+    content.section_layout && typeof content.section_layout === "object" && !Array.isArray(content.section_layout)
+      ? content.section_layout
+      : {};
+  for (const [section, layout] of Object.entries(requestLayout)) {
+    if (contentLayout[section] !== layout) {
+      errors.push(`section_layout.${section} must match request.section_layout`);
+    }
+  }
+
+  const visibility =
+    request.section_visibility && typeof request.section_visibility === "object" && !Array.isArray(request.section_visibility)
+      ? request.section_visibility
+      : {};
+  for (const [section, visible] of Object.entries(visibility)) {
+    if (requiredVisibleSections.has(section) && visible === false) {
+      errors.push(`request attempted to hide required section: ${section}`);
+      continue;
+    }
+    if (visible === false && hasSection(content, section)) {
+      errors.push(`section_visibility.${section}=false but section was rendered`);
+    }
+    if (
+      visible === true &&
+      sectionHasRequestData(section, request) &&
+      !hasSection(content, section)
+    ) {
+      errors.push(`section_visibility.${section}=true but section was not rendered`);
+    }
+  }
+}
+
+function sectionHasRequestData(section, request) {
+  if (section === "contact_info") {
+    return request.contact && Object.values(request.contact).some(Boolean);
+  }
+  if (section === "history") return Array.isArray(request.history) && request.history.length > 0;
+  if (section === "portfolio") return Array.isArray(request.portfolio) && request.portfolio.length > 0;
+  if (section === "featured_products" || section === "product_area") {
+    return Array.isArray(request.products) && request.products.length > 0;
+  }
+  if (section === "product_registration_cta") {
+    return request.homepage_type === "product" && (!Array.isArray(request.products) || request.products.length === 0);
+  }
+  return true;
+}
+
+function requestWantsSection(request, section) {
+  const visibility =
+    request.section_visibility && typeof request.section_visibility === "object" && !Array.isArray(request.section_visibility)
+      ? request.section_visibility
+      : {};
+  return visibility[section] !== false;
 }

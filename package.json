@@ -11,6 +11,8 @@
     "goose:check": "bash scripts/check-goose-cli.sh",
     "goose:preflight": "bash scripts/goose-preflight.sh",
     "goose:e2e": "bash scripts/run-goose-e2e.sh",
+    "goose:draft": "bash scripts/run-goose-homepage-draft-recipe.sh",
+    "draft:validate": "bash scripts/validate-homepage-draft.sh",
     "jobs:create": "node scripts/create-homepage-job.mjs",
     "jobs:run": "bash scripts/run-pending-homepage-jobs.sh",
     "test:harness": "node scripts/test-harness.mjs"

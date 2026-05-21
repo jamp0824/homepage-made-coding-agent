@@ -65,7 +65,7 @@ body {
 
 .profile-action-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   align-items: center;
   margin-bottom: 12px;
@@ -156,7 +156,7 @@ h1 {
 
 h2 {
   margin: 0 0 18px;
-  font-size: 24px;
+  font-size: 22px;
   letter-spacing: 0;
 }
 
@@ -273,6 +273,10 @@ dd {
   border-left: 4px solid var(--primary);
 }
 
+.strength-grid-list {
+  grid-template-columns: 1fr;
+}
+
 .profile-strength-card {
   background: transparent;
   border: 0;
@@ -290,6 +294,10 @@ dd {
 .timeline {
   display: grid;
   gap: 14px;
+}
+
+.timeline-compact {
+  gap: 8px;
 }
 
 .timeline li {
@@ -312,6 +320,10 @@ dd {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.card-list {
+  grid-template-columns: 1fr;
 }
 
 .portfolio-card {
@@ -338,6 +350,32 @@ dd {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
+}
+
+.product-card-list-3 .product-profile-card {
+  width: min(100%, 180px);
+}
+
+.profile-page[data-content-density="compact"] .info-card,
+.profile-page[data-content-density="compact"] .contact-cta {
+  margin-top: 16px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
+.profile-page[data-content-density="compact"] .profile-cover {
+  height: 260px;
+}
+
+.profile-page[data-content-density="rich"] .info-card,
+.profile-page[data-content-density="rich"] .contact-cta {
+  padding-top: 38px;
+  padding-bottom: 38px;
+}
+
+.profile-page[data-content-density="rich"] .strength-grid,
+.profile-page[data-content-density="rich"] .card-grid {
+  gap: 16px;
 }
 
 .product-profile-card {

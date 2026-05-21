@@ -1,0 +1,11 @@
+{
+  "request_id": "REQ_CHAT_1779346427161_GOODGM",
+  "company_id": "COMPANY_1779346427161_GOODGM",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "template_variant": "result_style_v1",
+  "generated_at": "2026-05-21T06:54:15.579Z",
+  "generator": "static-mvp-generator",
+  "model_provider": "goose_agent",
+  "model_name": "configured-goose-model"
+}

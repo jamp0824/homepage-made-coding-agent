@@ -1,0 +1,27 @@
+{
+  "request_id": "REQ_CHAT_1779346427161_GOODGM",
+  "company_id": "COMPANY_1779346427161_GOODGM",
+  "request_path": "harness/tmp/chat-session-requests/CHAT_JOB_1779346427818.json",
+  "generated_path": "generated-sites/COMPANY_1779346427161_GOODGM",
+  "final_status": "agent_failed",
+  "retry_count": 0,
+  "validation_result": {
+    "passed": false,
+    "errors": [
+      "generation has not been validated yet"
+    ],
+    "warnings": []
+  },
+  "build_result": {
+    "passed": false,
+    "command": "npm run build",
+    "errors": []
+  },
+  "timeline": [
+    {
+      "step": "agent_running",
+      "status": "completed",
+      "message": "Initial generated files were written; validation has not run yet."
+    }
+  ]
+}

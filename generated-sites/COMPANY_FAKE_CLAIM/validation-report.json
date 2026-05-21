@@ -1,9 +1,10 @@
 {
   "passed": false,
   "errors": [
+    "core_strengths count must match request.core_strengths",
     "Unsupported high-risk phrase found: 업계 1위",
     "Unsupported high-risk phrase found: 수상 경력"
   ],
   "warnings": [],
-  "checked_at": "2026-05-18T16:59:54.150Z"
+  "checked_at": "2026-05-21T07:17:11.286Z"
 }

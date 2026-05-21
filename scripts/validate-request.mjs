@@ -29,10 +29,37 @@ const allowedTopLevelFields = new Set([
   "products",
   "portfolio",
   "history",
+  "section_visibility",
+  "section_layout",
+  "content_density",
+  "content_source",
+  "content_draft",
+  "draft_id",
+  "confirmed_at",
   "preferred_style",
   "created_at",
 ]);
 const companyIdPattern = /^[A-Za-z0-9_-]+$/;
+const requiredVisibleSections = new Set(["company_intro", "core_strengths", "contact_cta"]);
+const allowedVisibilitySections = new Set([
+  "company_summary",
+  "contact_info",
+  "company_intro",
+  "core_strengths",
+  "history",
+  "portfolio",
+  "featured_products",
+  "product_area",
+  "product_registration_cta",
+  "contact_cta",
+]);
+const allowedLayoutValues = {
+  core_strengths: new Set(["list", "grid_2"]),
+  history: new Set(["timeline", "compact"]),
+  portfolio: new Set(["list", "grid_2"]),
+  featured_products: new Set(["grid_2", "grid_3"]),
+  product_area: new Set(["grid_2", "grid_3"]),
+};
 
 const errors = [];
 let request;
@@ -133,6 +160,29 @@ if (!request || typeof request !== "object" || Array.isArray(request)) {
   if ("products" in request) validateProducts(request.products, errors);
   if ("history" in request) validateHistory(request.history, errors);
   if ("portfolio" in request) validatePortfolio(request.portfolio, errors);
+  if ("section_visibility" in request) validateSectionVisibility(request.section_visibility, errors);
+  if ("section_layout" in request) validateSectionLayout(request.section_layout, errors);
+  if (
+    "content_density" in request &&
+    !["compact", "standard", "rich"].includes(request.content_density)
+  ) {
+    errors.push("content_density must be compact, standard, or rich");
+  }
+  if (
+    "content_source" in request &&
+    !["request_only", "ai_suggested", "ai_suggested_user_confirmed"].includes(
+      request.content_source,
+    )
+  ) {
+    errors.push("content_source must be request_only, ai_suggested, or ai_suggested_user_confirmed");
+  }
+  if ("content_draft" in request) validateContentDraft(request.content_draft, errors);
+  if ("draft_id" in request && typeof request.draft_id !== "string") {
+    errors.push("draft_id must be a string");
+  }
+  if ("confirmed_at" in request && typeof request.confirmed_at !== "string") {
+    errors.push("confirmed_at must be a string");
+  }
 }
 
 if (errors.length > 0) {
@@ -190,6 +240,90 @@ function validateContact(contact, outputErrors) {
   }
 }
 
+function validateContentDraft(contentDraft, outputErrors) {
+  if (!contentDraft || typeof contentDraft !== "object" || Array.isArray(contentDraft)) {
+    outputErrors.push("content_draft must be an object");
+    return;
+  }
+
+  const allowedFields = new Set([
+    "hero_title",
+    "one_line_intro",
+    "company_intro",
+    "business_summary",
+    "core_strengths",
+    "tags",
+    "section_visibility",
+    "section_layout",
+    "content_density",
+    "hero_image_theme",
+    "hero_image_keywords",
+    "cta_text",
+  ]);
+  for (const field of Object.keys(contentDraft)) {
+    if (!allowedFields.has(field)) {
+      outputErrors.push(`content_draft has unsupported field: ${field}`);
+    }
+  }
+
+  for (const field of [
+    "hero_title",
+    "one_line_intro",
+    "company_intro",
+    "business_summary",
+    "hero_image_theme",
+    "cta_text",
+  ]) {
+    if (field in contentDraft && typeof contentDraft[field] !== "string") {
+      outputErrors.push(`content_draft.${field} must be a string`);
+    }
+  }
+
+  if ("core_strengths" in contentDraft) {
+    if (!Array.isArray(contentDraft.core_strengths)) {
+      outputErrors.push("content_draft.core_strengths must be an array");
+    } else {
+      if (contentDraft.core_strengths.length > 10) {
+        outputErrors.push("content_draft.core_strengths must contain at most 10 items");
+      }
+      contentDraft.core_strengths.forEach((item, index) => {
+        if (typeof item !== "string" || item.trim() === "") {
+          outputErrors.push(`content_draft.core_strengths[${index}] must be a non-empty string`);
+        }
+      });
+    }
+  }
+
+  if ("tags" in contentDraft) {
+    if (!Array.isArray(contentDraft.tags)) {
+      outputErrors.push("content_draft.tags must be an array");
+    } else if (contentDraft.tags.length > 12) {
+      outputErrors.push("content_draft.tags must contain at most 12 items");
+    }
+  }
+
+  if ("hero_image_keywords" in contentDraft) {
+    if (!Array.isArray(contentDraft.hero_image_keywords)) {
+      outputErrors.push("content_draft.hero_image_keywords must be an array");
+    } else if (contentDraft.hero_image_keywords.length > 8) {
+      outputErrors.push("content_draft.hero_image_keywords must contain at most 8 items");
+    }
+  }
+
+  if ("section_visibility" in contentDraft) {
+    validateSectionVisibility(contentDraft.section_visibility, outputErrors, "content_draft.");
+  }
+  if ("section_layout" in contentDraft) {
+    validateSectionLayout(contentDraft.section_layout, outputErrors, "content_draft.");
+  }
+  if (
+    "content_density" in contentDraft &&
+    !["compact", "standard", "rich"].includes(contentDraft.content_density)
+  ) {
+    outputErrors.push("content_draft.content_density must be compact, standard, or rich");
+  }
+}
+
 function validateHistory(history, outputErrors) {
   if (!Array.isArray(history)) {
     outputErrors.push("history must be an array");
@@ -221,4 +355,42 @@ function validatePortfolio(portfolio, outputErrors) {
       outputErrors.push(`portfolio[${index}] must be an object`);
     }
   });
+}
+
+function validateSectionVisibility(sectionVisibility, outputErrors) {
+  if (!sectionVisibility || typeof sectionVisibility !== "object" || Array.isArray(sectionVisibility)) {
+    outputErrors.push("section_visibility must be an object");
+    return;
+  }
+
+  for (const [section, visible] of Object.entries(sectionVisibility)) {
+    if (!allowedVisibilitySections.has(section)) {
+      outputErrors.push(`section_visibility has unsupported section: ${section}`);
+      continue;
+    }
+    if (typeof visible !== "boolean") {
+      outputErrors.push(`section_visibility.${section} must be a boolean`);
+    }
+    if (visible === false && requiredVisibleSections.has(section)) {
+      outputErrors.push(`section_visibility.${section} cannot be false`);
+    }
+  }
+}
+
+function validateSectionLayout(sectionLayout, outputErrors) {
+  if (!sectionLayout || typeof sectionLayout !== "object" || Array.isArray(sectionLayout)) {
+    outputErrors.push("section_layout must be an object");
+    return;
+  }
+
+  for (const [section, layout] of Object.entries(sectionLayout)) {
+    const allowed = allowedLayoutValues[section];
+    if (!allowed) {
+      outputErrors.push(`section_layout has unsupported section: ${section}`);
+      continue;
+    }
+    if (typeof layout !== "string" || !allowed.has(layout)) {
+      outputErrors.push(`section_layout.${section} has unsupported layout: ${layout}`);
+    }
+  }
 }

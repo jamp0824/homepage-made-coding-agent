@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/homepage-draft.schema.json",
+  "title": "HomepageDraft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "draft_id",
+    "draft_status",
+    "homepage_type",
+    "company_name",
+    "industry",
+    "business_type",
+    "main_business_description",
+    "section_visibility",
+    "section_layout",
+    "content_density",
+    "content_source"
+  ],
+  "properties": {
+    "draft_id": { "type": "string", "minLength": 1 },
+    "draft_status": {
+      "type": "string",
+      "enum": ["needs_input", "drafted", "edited", "confirmed", "validation_failed"]
+    },
+    "request_id": { "type": "string" },
+    "company_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "homepage_type": { "type": "string", "enum": ["company_intro", "product"] },
+    "company_name": { "type": "string" },
+    "industry": { "type": "string" },
+    "business_type": { "type": "string" },
+    "main_business_description": { "type": "string" },
+    "initial_prompt": { "type": "string" },
+    "one_line_intro": { "type": "string" },
+    "company_intro": { "type": "string" },
+    "core_strengths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 10
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 12
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "website_url": { "type": "string" }
+      }
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "image_url": { "type": "string" }
+        }
+      }
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["year", "text"],
+        "properties": {
+          "year": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "portfolio": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "section_visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "company_summary": { "type": "boolean" },
+        "contact_info": { "type": "boolean" },
+        "company_intro": { "type": "boolean" },
+        "core_strengths": { "type": "boolean" },
+        "history": { "type": "boolean" },
+        "portfolio": { "type": "boolean" },
+        "featured_products": { "type": "boolean" },
+        "product_area": { "type": "boolean" },
+        "product_registration_cta": { "type": "boolean" },
+        "contact_cta": { "type": "boolean" }
+      }
+    },
+    "section_layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "core_strengths": { "type": "string", "enum": ["list", "grid_2"] },
+        "history": { "type": "string", "enum": ["timeline", "compact"] },
+        "portfolio": { "type": "string", "enum": ["list", "grid_2"] },
+        "featured_products": { "type": "string", "enum": ["grid_2", "grid_3"] },
+        "product_area": { "type": "string", "enum": ["grid_2", "grid_3"] }
+      }
+    },
+    "content_density": { "type": "string", "enum": ["compact", "standard", "rich"] },
+    "content_source": {
+      "type": "string",
+      "enum": ["request_only", "ai_suggested", "ai_suggested_user_confirmed"]
+    },
+    "missing_fields": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "validation_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "errors", "warnings"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "confirmed_at": { "type": "string" }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/chat-action.schema.json",
+  "title": "ChatAction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "assistant_message"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "ask_missing_info",
+        "patch_request",
+        "patch_draft",
+        "toggle_section",
+        "run_generation",
+        "show_preview"
+      ]
+    },
+    "assistant_message": { "type": "string", "minLength": 1 },
+    "request_patch": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "content_draft_patch": {
+      "$ref": "content-draft.schema.json"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "anyOf": [
+    { "required": ["assistant_message"] },
+    { "required": ["request_patch"] },
+    { "required": ["content_draft_patch"] }
+  ]
+}

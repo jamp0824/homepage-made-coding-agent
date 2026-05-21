@@ -1,0 +1,35 @@
+{
+  "request_id": "REQ_DRAFT_1779293179066",
+  "company_id": "DRAFT_AI_DRAFT_1779293179066",
+  "status": "generated",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "generated_path": "generated-sites/DRAFT_AI_DRAFT_1779293179066",
+  "homepage_url": "/homepage/DRAFT_AI_DRAFT_1779293179066",
+  "model_provider": "goose_agent",
+  "model_name": "configured-goose-model",
+  "generated_files": [
+    "agent-run-report.json",
+    "agent-run-report.md",
+    "assets.json",
+    "content.json",
+    "generation-result.json",
+    "index.html",
+    "metadata.json",
+    "page.tsx",
+    "styles.css",
+    "validation-report.json"
+  ],
+  "build_result": {
+    "passed": true,
+    "command": "npm run build",
+    "errors": []
+  },
+  "validation_result": {
+    "passed": true,
+    "errors": [],
+    "warnings": []
+  },
+  "retry_count": 1,
+  "completed_at": "2026-05-20T16:08:32.521Z"
+}

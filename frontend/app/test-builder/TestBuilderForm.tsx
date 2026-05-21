@@ -1,116 +1,261 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type KeyboardEvent, useState } from "react";
 
-type GenerateResult = {
-  ok: boolean;
-  requestId: string;
-  companyId: string;
-  modelProvider: string;
-  modelName: string;
-  status: string;
-  homepageUrl: string;
-  generatedPath: string;
-  validationPassed: boolean;
-  buildPassed: boolean;
-  previewAvailable: boolean;
-  retryCount: number;
-  exitCode: number | null;
-  failureCategory?: string | null;
-  failureTitle?: string | null;
-  failureMessage?: string | null;
-  nextAction?: string | null;
-  errorSummary?: string;
+type DraftStatus = "needs_input" | "drafted" | "edited" | "confirmed" | "validation_failed";
+type HomepageType = "company_intro" | "product";
+type StepKey = "compose" | "builder";
+
+type Draft = {
+  draft_id: string;
+  draft_status: DraftStatus;
+  homepage_type: HomepageType;
+  company_name: string;
+  industry: string;
+  business_type: string;
+  main_business_description: string;
+  initial_prompt?: string;
+  one_line_intro: string;
+  company_intro: string;
+  core_strengths: string[];
+  tags: string[];
+  contact: Record<string, string>;
+  products: Array<{ name: string; description?: string; image_url?: string }>;
+  history: Array<{ year: string; text: string }>;
+  portfolio: Array<{ title?: string; description?: string }>;
+  section_visibility: Record<string, boolean>;
+  section_layout: Record<string, string>;
+  content_density: "compact" | "standard" | "rich";
+  validation_result: {
+    passed: boolean;
+    errors: string[];
+    warnings: string[];
+  };
 };
 
-type StepKey = "start" | "type" | "info" | "ai" | "done";
+type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+  created_at: string;
+};
 
-const steps: Array<{
-  key: StepKey;
-  label: string;
-  progressLabel: string;
-  progress: number;
+type Session = {
+  draft_id: string;
+  current_step: string;
+  last_assistant_message: string;
+  pending_questions: string[];
+  messages: ChatMessage[];
+};
+
+type GenerationJob = {
+  job_id: string;
+  request_id: string;
+  company_id: string;
+  status: string;
+  homepage_url: string;
+  generated_path: string;
+  exit_code: number | null;
+  result?: {
+    validation_result?: { passed?: boolean };
+    build_result?: { passed?: boolean };
+    retry_count?: number;
+  };
+};
+
+type DraftResponse = {
+  ok: boolean;
+  draft_id: string;
+  assistant_message?: string;
+  draft_provider?: string;
+  draft_provider_status?: string;
+  draft: Draft;
+  session: Session;
+};
+
+type MessageResponse = {
+  ok: boolean;
+  assistant_message: string;
+  patch: Record<string, unknown>;
+  draft: Draft;
+  session: Session;
+  error?: string;
+};
+
+type GenerationResponse = {
+  ok: boolean;
+  job: GenerationJob;
+  error?: string;
+  stdout?: string;
+  stderr?: string;
+};
+
+type BuilderForm = {
+  homepageType: HomepageType;
+  initialPrompt: string;
+  companyName: string;
+  industry: string;
+  businessType: string;
+  mainBusinessDescription: string;
+  contactPhone: string;
+  contactEmail: string;
+  historyItems: string;
+  portfolioItems: string;
+};
+
+const homepageTypeOptions: Array<{
+  value: HomepageType;
+  title: string;
+  description: string;
+  icon: string;
+  chips: string[];
+  disabled?: boolean;
 }> = [
-  { key: "start", label: "시작", progressLabel: "", progress: 0 },
-  { key: "type", label: "홈페이지 형식", progressLabel: "Step 1 / 4", progress: 25 },
-  { key: "info", label: "기업 정보", progressLabel: "Step 2 / 4", progress: 50 },
-  { key: "ai", label: "설정", progressLabel: "Step 3 / 4", progress: 75 },
-  { key: "done", label: "완료", progressLabel: "Step 4 (완료)", progress: 100 },
+  {
+    value: "company_intro",
+    title: "회사 소개 중심",
+    description: "result_template 안에서 회사 소개, 강점, 연혁, 포트폴리오를 강조합니다.",
+    icon: "▤",
+    chips: ["회사 소개", "강점", "연혁/포트폴리오"],
+  },
+  {
+    value: "product",
+    title: "상품 정보 중심",
+    description: "상품 중심 구성은 별도 기준 템플릿 확정 후 지원합니다.",
+    icon: "◇",
+    chips: ["준비 중", "템플릿 확정 필요"],
+    disabled: true,
+  },
 ];
 
-const initialForm = {
+const quickActions = [
+  "내용을 더 풍부하게 해줘",
+  "핵심 강점을 카드형으로 보여줘",
+  "연혁은 간단하게 보여줘",
+  "포트폴리오는 숨겨줘",
+];
+
+const initialForm: BuilderForm = {
   homepageType: "company_intro",
-  companyName: "주식회사 테스트홈",
+  initialPrompt:
+    "AI 기반 재고관리 솔루션 회사 홈페이지 초안을 전문적이고 신뢰감 있게 만들어줘. 중소기업의 입출고와 발주 업무 자동화를 강조해줘.",
+  companyName: "주식회사 샘플AI",
   industry: "IT·소프트웨어",
-  businessType: "업무 자동화 솔루션 개발 및 공급",
-  mainBusinessDescription: "기업의 반복 업무를 줄이는 업무 자동화 솔루션을 개발하고 공급합니다.",
-  oneLineIntro: "반복 업무를 줄이는 자동화 솔루션",
-  companyIntro: "주식회사 테스트홈은 기업의 업무 흐름을 분석하고 자동화 시스템을 구축하는 회사입니다.",
-  coreStrengths: "업무 자동화\n데이터 관리\n기업 맞춤 구축\n빠른 도입 지원",
-  tags: "업무 자동화\n데이터 관리\n기업 맞춤",
-  coverImageUrl: "",
-  contactAddress: "서울특별시 강남구 테스트로 10",
+  businessType: "소프트웨어 개발 및 공급",
+  mainBusinessDescription: "AI 기반 재고관리 솔루션을 개발하고 중소기업에 공급합니다.",
   contactPhone: "02-1234-5678",
-  contactEmail: "hello@testhome.example",
-  contactWebsiteUrl: "https://example.com",
-  productName: "업무 자동화 대시보드",
-  productDescription: "반복 업무 현황을 한눈에 보고 자동화 상태를 관리하는 대시보드입니다.",
-  productImageUrl: "",
-  portfolioItems: "업무 자동화 포털 구축 | 반복 업무 신청과 승인 상태를 한 화면에서 관리하는 포털을 구축했습니다.",
-  historyItems: "2026 | 업무 자동화 솔루션 테스트 서비스를 시작했습니다.",
-  generationMode: "goose",
+  contactEmail: "hello@example.com",
+  historyItems: "2026 | AI 재고관리 솔루션 서비스를 시작했습니다.",
+  portfolioItems: "재고관리 업무 자동화 구축 | 입출고와 발주 상태를 한 화면에서 관리하는 업무 환경을 구성했습니다.",
 };
 
 export default function TestBuilderForm() {
-  const [activeStep, setActiveStep] = useState<StepKey>("start");
-  const [form, setForm] = useState(initialForm);
+  const [activeStep, setActiveStep] = useState<StepKey>("compose");
+  const [form, setForm] = useState<BuilderForm>(initialForm);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [chatInput, setChatInput] = useState("핵심 강점을 카드형으로 더 풍부하게 보여줘");
+  const [isDrafting, setIsDrafting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [result, setResult] = useState<GenerateResult | null>(null);
+  const [generation, setGeneration] = useState<GenerationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const current = useMemo(
-    () => steps.find((step) => step.key === activeStep) ?? steps[0],
-    [activeStep],
-  );
 
-  function updateField(field: keyof typeof form, value: string) {
+  function updateField<K extends keyof BuilderForm>(field: K, value: BuilderForm[K]) {
     setForm((currentForm) => ({ ...currentForm, [field]: value }));
   }
 
-  function updateCoreStrength(index: number, value: string) {
-    const strengths = form.coreStrengths.split("\n");
-    strengths[index] = value;
-    updateField("coreStrengths", strengths.join("\n"));
-  }
-
-  async function generateHomepage() {
-    setActiveStep("done");
-    setIsGenerating(true);
-    setResult(null);
+  async function createDraft() {
+    setIsDrafting(true);
     setError(null);
+    setGeneration(null);
 
     try {
-      const response = await fetch("/api/test-generate", {
+      const response = await fetch("/api/homepage-drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(buildDraftPayload(form)),
       });
-      const body = await response.json();
+      const body = await readJsonResponse<DraftResponse & { error?: string }>(response);
       if (!response.ok) {
-        setError(body.error ? `${body.error}: ${(body.fields || []).join(", ")}` : "요청 처리 실패");
-        setResult(body);
+        setError(body.error || "초안 생성 실패");
         return;
       }
-      setResult(body);
+      setDraft(body.draft);
+      setSession(body.session);
+      setActiveStep("builder");
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "요청 실패");
+      setError(requestError instanceof Error ? requestError.message : "초안 생성 요청 실패");
+    } finally {
+      setIsDrafting(false);
+    }
+  }
+
+  async function sendMessage() {
+    if (!draft || !chatInput.trim()) return;
+    setIsSending(true);
+    setError(null);
+    setGeneration(null);
+
+    try {
+      const response = await fetch(`/api/homepage-drafts/${draft.draft_id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: chatInput }),
+      });
+      const body = await readJsonResponse<MessageResponse>(response);
+      if (!response.ok) {
+        setError(body.error || "대화 수정 실패");
+        return;
+      }
+      setDraft(body.draft);
+      setSession(body.session);
+      setChatInput("");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "대화 수정 요청 실패");
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  async function generateFromDraft() {
+    if (!draft) return;
+    setIsGenerating(true);
+    setError(null);
+    setGeneration(null);
+
+    try {
+      const response = await fetch("/api/homepage-generation-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          draft_id: draft.draft_id,
+          generation_mode: "auto",
+        }),
+      });
+      const body = await readJsonResponse<GenerationResponse>(response);
+      setGeneration(body);
+      if (!response.ok) {
+        setError(body.error || "최종 생성 실패");
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "최종 생성 요청 실패");
     } finally {
       setIsGenerating(false);
     }
   }
 
+  function restart() {
+    setDraft(null);
+    setSession(null);
+    setGeneration(null);
+    setError(null);
+    setChatInput("핵심 강점을 카드형으로 더 풍부하게 보여줘");
+    setActiveStep("compose");
+  }
+
   return (
-    <div className="ref-shell test-builder-flow">
+    <div className={`ref-shell test-builder-flow test-builder-step-${activeStep}`}>
       <header className="ref-header">
         <div className="ref-brand">
           <span className="ref-brand-icon">▣</span>
@@ -127,365 +272,457 @@ export default function TestBuilderForm() {
         </button>
       </header>
 
-      {activeStep !== "start" ? (
-        <div className="ref-progress-wrap">
-          <div className="ref-progress-head">
-            <span>{current.progressLabel}</span>
-            <strong>{current.label}</strong>
-          </div>
-          <div className="ref-progress-track">
-            <div className="ref-progress-bar" style={{ width: `${current.progress}%` }} />
-          </div>
-        </div>
-      ) : null}
-
       <main className="ref-main">
-        {activeStep === "start" ? <StartStep setActiveStep={setActiveStep} /> : null}
-        {activeStep === "type" ? <TypeStep setActiveStep={setActiveStep} /> : null}
-        {activeStep === "info" ? (
-          <InfoStep form={form} setActiveStep={setActiveStep} updateField={updateField} />
-        ) : null}
-        {activeStep === "ai" ? (
-          <AiStep
+        {activeStep === "compose" ? (
+          <ComposeStep
+            createDraft={createDraft}
+            error={error}
             form={form}
-            generateHomepage={generateHomepage}
-            setActiveStep={setActiveStep}
-            updateCoreStrength={updateCoreStrength}
+            isDrafting={isDrafting}
             updateField={updateField}
           />
         ) : null}
-        {activeStep === "done" ? (
-          <DoneStep
+        {activeStep === "builder" && draft ? (
+          <BuilderStep
+            chatInput={chatInput}
+            draft={draft}
             error={error}
+            generateFromDraft={generateFromDraft}
+            generation={generation}
             isGenerating={isGenerating}
-            result={result}
-            restart={() => {
-              setResult(null);
-              setError(null);
-              setActiveStep("type");
-            }}
+            isSending={isSending}
+            restart={restart}
+            sendMessage={sendMessage}
+            session={session}
+            setChatInput={setChatInput}
           />
         ) : null}
       </main>
     </div>
   );
 }
-function StartStep({ setActiveStep }: { setActiveStep: (step: StepKey) => void }) {
-  return (
-    <section className="ref-center ref-start">
-      <div className="ref-hero-icon">✧</div>
-      <h1>무료로 기업 홈페이지를 만들어보세요</h1>
-      <p>AI가 도와주는 간단한 단계로 전문적인 기업 홈페이지를 만들 수 있습니다.</p>
-      <p>마지막 완료 버튼을 누르면 실제 Goose 생성과 검증이 실행됩니다.</p>
 
-      <div className="ref-benefits">
-        <Benefit icon="◷" title="자동 생성" text="입력 완료 후 request JSON을 만들고 Goose를 실행합니다" />
-        <Benefit icon="✦" title="템플릿 기반" text="회사소개중심형 result-style 템플릿 안에서 생성합니다" />
-        <Benefit icon="✓" title="검증 후 공개" text="validation/build 통과 시 생성된 홈페이지를 바로 확인합니다" />
-      </div>
-
-      <button className="ref-primary-button" onClick={() => setActiveStep("type")}>
-        시작하기
-      </button>
-      <p className="ref-footnote">테스트 환경에서는 Goose provider 설정과 quota 상태에 따라 실패할 수 있습니다</p>
-    </section>
-  );
-}
-
-function TypeStep({ setActiveStep }: { setActiveStep: (step: StepKey) => void }) {
-  return (
-    <section className="ref-panel">
-      <div className="ref-title">
-        <h1>홈페이지 형식을 선택해주세요</h1>
-        <p>현재 테스트 생성은 회사소개중심형으로 고정되어 있습니다</p>
-      </div>
-
-      <div className="ref-choice-list">
-        <button className="ref-choice-card ref-choice-card-disabled" disabled>
-          <span className="ref-choice-icon">◇</span>
-          <span>
-            <strong>상품중심형</strong>
-            <small>등록한 상품을 중심으로 보여주는 홈페이지입니다.</small>
-            <em>
-              <span>상품 갤러리</span>
-              <span>견적/구매 강조</span>
-              <span>추후 지원</span>
-            </em>
-          </span>
-        </button>
-        <button className="ref-choice-card ref-choice-card-selected" disabled>
-          <span className="ref-choice-icon">▤</span>
-          <span>
-            <strong>회사소개중심형</strong>
-            <small>회사 소개와 포트폴리오를 중심으로 보여주는 홈페이지입니다.</small>
-            <em>
-              <span>회사 스토리</span>
-              <span>포트폴리오</span>
-              <span>연혁</span>
-            </em>
-          </span>
-        </button>
-      </div>
-
-      <StepButtons back={() => setActiveStep("start")} next={() => setActiveStep("info")} />
-    </section>
-  );
-}
-
-function InfoStep({
+function ComposeStep({
+  createDraft,
+  error,
   form,
-  setActiveStep,
+  isDrafting,
   updateField,
 }: {
-  form: typeof initialForm;
-  setActiveStep: (step: StepKey) => void;
-  updateField: (field: keyof typeof initialForm, value: string) => void;
+  createDraft: () => void;
+  error: string | null;
+  form: BuilderForm;
+  isDrafting: boolean;
+  updateField: <K extends keyof BuilderForm>(field: K, value: BuilderForm[K]) => void;
 }) {
+  const canCreateDraft = Boolean(form.initialPrompt.trim());
+
   return (
-    <section className="ref-panel">
-      <div className="ref-title">
-        <h1>기업 정보를 입력해주세요</h1>
-        <p>AI가 이 정보를 바탕으로 홈페이지를 만듭니다</p>
+    <section className="make-compose">
+      <div className="make-compose-heading">
+        <h1>어떤 홈페이지를 만들까요?</h1>
+        <p>요청을 입력하면 Goose가 고정 템플릿 슬롯에 맞춰 초안 홈페이지를 구성합니다.</p>
       </div>
 
-      <div className="ref-form">
-        <Field
-          label="회사명"
-          value={form.companyName}
-          onChange={(value) => updateField("companyName", value)}
-        />
-        <Field
-          helper="등록된 기업 정보에서 가져온 정보이며 수정할 수 있습니다"
-          label="업종"
-          value={form.industry}
-          onChange={(value) => updateField("industry", value)}
-        />
-        <Field
-          helper="등록된 기업 정보에서 가져온 정보이며 수정할 수 있습니다"
-          label="업태"
-          value={form.businessType}
-          onChange={(value) => updateField("businessType", value)}
-        />
-        <label className="ref-field">
-          <span>
-            주요 사업 내용 <b>*</b>
-          </span>
+      <div className="make-composer-card">
+        <label className="make-prompt-field">
+          <span>초기 prompt</span>
           <textarea
-            value={form.mainBusinessDescription}
-            onChange={(event) => updateField("mainBusinessDescription", event.target.value)}
+            aria-label="초기 홈페이지 생성 요청"
+            disabled={isDrafting}
+            value={form.initialPrompt}
+            onChange={(event) => updateField("initialPrompt", event.target.value)}
           />
-          <small>최소 10자 이상 입력해주세요 ({Math.min(form.mainBusinessDescription.length, 10)}/10)</small>
         </label>
-      </div>
-
-      <p className="ref-blue-note">
-        입력하신 정보는 AI가 홈페이지 내용을 생성할 때 참고됩니다. 생성 후 결과 화면에서 바로 확인할 수 있습니다.
-      </p>
-
-      <StepButtons back={() => setActiveStep("type")} next={() => setActiveStep("ai")} />
-    </section>
-  );
-}
-
-function AiStep({
-  form,
-  generateHomepage,
-  setActiveStep,
-  updateCoreStrength,
-  updateField,
-}: {
-  form: typeof initialForm;
-  generateHomepage: () => void;
-  setActiveStep: (step: StepKey) => void;
-  updateCoreStrength: (index: number, value: string) => void;
-  updateField: (field: keyof typeof initialForm, value: string) => void;
-}) {
-  const strengths = form.coreStrengths.split("\n");
-
-  return (
-    <section className="ref-panel">
-      <div className="ref-title">
-        <h1>홈페이지 내용을 설정해주세요</h1>
-        <p>입력한 내용만 템플릿에 반영되고, 없는 정보는 만들어내지 않습니다</p>
-      </div>
-
-      <div className="ref-section-card">
-        <div className="ref-section-head">
-          <span>한 줄 소개</span>
-          <small>표시</small>
+        <div className="make-composer-footer">
+          <span>Goose fixed template draft</span>
+          <button
+            className="ref-primary-button"
+            disabled={isDrafting || !canCreateDraft}
+            onClick={createDraft}
+            type="button"
+          >
+            {isDrafting ? "초안 구성 중..." : "초안 만들기"}
+          </button>
         </div>
-        <input
-          aria-label="한 줄 소개"
-          value={form.oneLineIntro}
-          onChange={(event) => updateField("oneLineIntro", event.target.value)}
-        />
       </div>
 
-      <div className="ref-section-card">
-        <span>기업 소개</span>
-        <textarea
-          aria-label="기업 소개"
-          value={form.companyIntro}
-          onChange={(event) => updateField("companyIntro", event.target.value)}
-        />
-      </div>
+      {error ? <div className="draft-error-banner">{error}</div> : null}
 
-      <div className="ref-section-card">
-        <div className="ref-section-head">
-          <span>핵심 강점</span>
-          <small>표시</small>
+      <section className="make-homepage-types" aria-label="홈페이지 형식 선택">
+        <div className="make-section-title">
+          <h2>고정 템플릿 구성 방향</h2>
+          <p>템플릿은 result_template 하나로 고정하고, 초안에서 강조할 콘텐츠만 선택합니다.</p>
         </div>
-        <ul className="ref-strength-fields">
-          {[0, 1, 2, 3].map((index) => (
-            <li key={index}>
-              <input
-                aria-label={`핵심 강점 ${index + 1}`}
-                value={strengths[index] ?? ""}
-                onChange={(event) => updateCoreStrength(index, event.target.value)}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
+        <div className="make-type-card-grid" role="radiogroup" aria-label="홈페이지 형식">
+          {homepageTypeOptions.map((option) => {
+            const selected = form.homepageType === option.value;
+            return (
+              <button
+                aria-checked={selected}
+                className={`make-type-card${selected ? " make-type-card-selected" : ""}${
+                  option.disabled ? " make-type-card-disabled" : ""
+                }`}
+                disabled={isDrafting || option.disabled}
+                key={option.value}
+                onClick={() => {
+                  if (!option.disabled) updateField("homepageType", option.value);
+                }}
+                role="radio"
+                type="button"
+              >
+                <span className="make-type-icon">{option.icon}</span>
+                <span>
+                  <strong>{option.title}</strong>
+                  <small>{option.description}</small>
+                  <em>
+                    {option.chips.map((chip) => (
+                      <b key={chip}>{chip}</b>
+                    ))}
+                  </em>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
-      <details className="ref-section-card">
-        <summary>추가 정보</summary>
-        <div className="ref-form ref-extra-form">
-          <Field label="태그" value={form.tags} onChange={(value) => updateField("tags", value)} />
+      <details className="make-additional-info">
+        <summary>선택 정보</summary>
+        <div className="make-info-grid">
           <Field
-            label="커버 이미지 URL"
-            value={form.coverImageUrl}
-            onChange={(value) => updateField("coverImageUrl", value)}
+            disabled={isDrafting}
+            label="회사명"
+            value={form.companyName}
+            onChange={(value) => updateField("companyName", value)}
           />
           <Field
+            disabled={isDrafting}
+            label="업종"
+            value={form.industry}
+            onChange={(value) => updateField("industry", value)}
+          />
+          <Field
+            disabled={isDrafting}
+            label="업태"
+            value={form.businessType}
+            onChange={(value) => updateField("businessType", value)}
+          />
+          <label className="ref-field">
+            <span>주요 사업 내용</span>
+            <textarea
+              disabled={isDrafting}
+              value={form.mainBusinessDescription}
+              onChange={(event) => updateField("mainBusinessDescription", event.target.value)}
+            />
+          </label>
+          <Field
+            disabled={isDrafting}
             label="연락처"
             value={form.contactPhone}
             onChange={(value) => updateField("contactPhone", value)}
           />
           <Field
+            disabled={isDrafting}
             label="이메일"
             value={form.contactEmail}
             onChange={(value) => updateField("contactEmail", value)}
           />
           <label className="ref-field">
-            <span>포트폴리오</span>
-            <textarea
-              value={form.portfolioItems}
-              onChange={(event) => updateField("portfolioItems", event.target.value)}
-            />
-            <small>형식: 프로젝트명 | 설명</small>
-          </label>
-          <label className="ref-field">
             <span>연혁</span>
             <textarea
+              disabled={isDrafting}
               value={form.historyItems}
               onChange={(event) => updateField("historyItems", event.target.value)}
             />
             <small>형식: 연도 | 내용</small>
           </label>
+          <label className="ref-field">
+            <span>포트폴리오</span>
+            <textarea
+              disabled={isDrafting}
+              value={form.portfolioItems}
+              onChange={(event) => updateField("portfolioItems", event.target.value)}
+            />
+            <small>형식: 프로젝트명 | 설명</small>
+          </label>
         </div>
       </details>
-
-      <p className="ref-yellow-note">
-        완료하면 실제 Goose agent가 실행됩니다. validation/build를 통과하면 생성된 홈페이지 링크가 표시됩니다.
-      </p>
-
-      <StepButtons
-        back={() => setActiveStep("info")}
-        next={generateHomepage}
-        nextLabel="완료하고 홈페이지 생성"
-      />
     </section>
   );
 }
 
-function DoneStep({
+function BuilderStep({
+  chatInput,
+  draft,
   error,
+  generateFromDraft,
+  generation,
   isGenerating,
+  isSending,
   restart,
-  result,
+  sendMessage,
+  session,
+  setChatInput,
 }: {
+  chatInput: string;
+  draft: Draft;
   error: string | null;
+  generateFromDraft: () => void;
+  generation: GenerationResponse | null;
   isGenerating: boolean;
+  isSending: boolean;
   restart: () => void;
-  result: GenerateResult | null;
+  sendMessage: () => void;
+  session: Session | null;
+  setChatInput: (value: string) => void;
 }) {
-  if (isGenerating) {
-    return (
-      <section className="ref-center ref-done">
-        <div className="ref-hero-icon">✦</div>
-        <h1>AI가 홈페이지를 생성하고 있습니다.</h1>
-        <p>request JSON 생성, Goose 실행, validation/build 검증을 순서대로 처리합니다.</p>
-      </section>
-    );
+  const generated = generation?.ok && generation.job;
+  const canSend = Boolean(chatInput.trim()) && !isSending;
+
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (canSend) sendMessage();
+    }
   }
 
-  if (result?.previewAvailable) {
-    return (
-      <section className="ref-center ref-done">
-        <div className="ref-done-icon">✓</div>
-        <h1>홈페이지 생성이 완료되었습니다.</h1>
-        <p>자동 검증과 build를 통과했습니다.</p>
+  return (
+    <section className="builder-workspace" aria-live="polite">
+      <header className="make-builder-appbar">
+        <div className="make-appbar-left">
+          <button className="builder-back-button" onClick={restart} type="button" aria-label="첫 화면으로 돌아가기">
+            ‹
+          </button>
+          <div>
+            <strong>{draft.company_name}</strong>
+            <span>Goose fixed template draft</span>
+          </div>
+        </div>
+        <div className="make-appbar-center" aria-label="작업 보기">
+          <span className="make-appbar-tab make-appbar-tab-active">Preview</span>
+          <span className="make-appbar-tab">Template</span>
+        </div>
+        <div className="make-appbar-right">
+          <span className="make-template-badge">
+            {draft.homepage_type === "company_intro" ? "회사소개형" : "상품형"}
+          </span>
+          <button
+            className="ref-primary-button"
+            disabled={isGenerating || !draft.validation_result.passed}
+            onClick={generateFromDraft}
+            type="button"
+          >
+            {isGenerating ? "생성 중..." : "생성"}
+          </button>
+        </div>
+      </header>
 
-        <div className="ref-result-box">
-          <dl className="meta-list">
-            <div>
-              <dt>company_id</dt>
-              <dd>{result.companyId}</dd>
-            </div>
-            <div>
-              <dt>status</dt>
-              <dd>{result.status}</dd>
-            </div>
-            <div>
-              <dt>validation</dt>
-              <dd>{result.validationPassed ? "pass" : "fail"}</dd>
-            </div>
-            <div>
-              <dt>build</dt>
-              <dd>{result.buildPassed ? "pass" : "fail"}</dd>
-            </div>
-          </dl>
-          <Link className="ref-primary-button ref-result-link" href={result.homepageUrl}>
-            생성된 홈페이지 보기
-          </Link>
+      <aside className="builder-chat-panel">
+        {error ? <div className="draft-error-banner">{error}</div> : null}
+        {isGenerating ? <StatusBanner title="홈페이지 생성 중" text="확정 draft를 request JSON으로 변환하고 검증을 실행합니다." /> : null}
+        {!draft.validation_result.passed ? (
+          <StatusBanner
+            tone="warning"
+            title="초안 검증 필요"
+            text={draft.validation_result.errors[0] || "초안 검증을 통과해야 생성할 수 있습니다."}
+          />
+        ) : null}
+        {generated ? <GenerationResult job={generation.job} /> : null}
+
+        <div className="builder-panel-body">
+          <div className="draft-message-list">
+            {(session?.messages || []).map((message, index) => (
+              <div className={`draft-message draft-message-${message.role}`} key={`${message.created_at}-${index}`}>
+                <strong>{message.role === "user" ? "고객" : "AI"}</strong>
+                <p>{message.content}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="builder-composer">
+          <div className="draft-quick-actions">
+            {quickActions.map((item) => (
+              <button key={item} onClick={() => setChatInput(item)} type="button">
+                {item}
+              </button>
+            ))}
+          </div>
+          <div className="make-chat-input">
+            <textarea
+              aria-label="초안 수정 요청"
+              placeholder="수정 요청을 입력하세요"
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
+            />
+            <button aria-label="요청 반영" disabled={!canSend} onClick={sendMessage} type="button">
+              {isSending ? "..." : "↑"}
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <section className="builder-preview-panel">
+        <div className="builder-preview-frame">
+          <DraftPreview draft={draft} />
         </div>
       </section>
-    );
-  }
-
-  return (
-    <section className="ref-center ref-done">
-      <div className="ref-done-icon ref-done-icon-failed">!</div>
-      <h1>{result?.failureTitle || "자동 생성이 완료되지 않았습니다."}</h1>
-      <p>{result?.failureMessage || error || "Goose 실행 또는 검증 단계에서 실패했습니다."}</p>
-      {result?.nextAction ? <p>{result.nextAction}</p> : null}
-      {result?.errorSummary ? <pre className="ref-error-summary">{result.errorSummary}</pre> : null}
-      <button className="ref-ghost-button" onClick={restart}>
-        다시 입력하기
-      </button>
     </section>
   );
 }
 
-function Benefit({ icon, title, text }: { icon: string; title: string; text: string }) {
+function StatusBanner({
+  text,
+  title,
+  tone = "info",
+}: {
+  text: string;
+  title: string;
+  tone?: "info" | "warning";
+}) {
   return (
-    <div className="ref-benefit">
-      <span>{icon}</span>
-      <div>
-        <strong>{title}</strong>
-        <small>{text}</small>
-      </div>
+    <div className={`builder-status-banner builder-status-${tone}`}>
+      <strong>{title}</strong>
+      <p>{text}</p>
     </div>
   );
 }
 
+function GenerationResult({ job }: { job: GenerationJob }) {
+  return (
+    <div className="builder-result-card">
+      <div>
+        <strong>홈페이지 생성 완료</strong>
+        <p>validation/build를 통과했습니다.</p>
+      </div>
+      <dl>
+        <div>
+          <dt>status</dt>
+          <dd>{job.status}</dd>
+        </div>
+        <div>
+          <dt>company_id</dt>
+          <dd>{job.company_id}</dd>
+        </div>
+      </dl>
+      <Link className="ref-primary-button ref-result-link" href={job.homepage_url}>
+        생성된 홈페이지 보기
+      </Link>
+    </div>
+  );
+}
+
+function DraftPreview({ draft }: { draft: Draft }) {
+  const visible = draft.section_visibility || {};
+  const layout = draft.section_layout || {};
+  const contactEntries = Object.entries(draft.contact || {}).filter(([, value]) => Boolean(value));
+  const tags = [...(draft.tags || []), draft.business_type].filter(Boolean);
+  const strengthClassName =
+    layout.core_strengths === "list" ? "draft-strength-list draft-strength-list-single" : "draft-strength-list";
+  const historyClassName =
+    layout.history === "compact" ? "draft-timeline draft-timeline-compact" : "draft-timeline";
+  const portfolioClassName =
+    layout.portfolio === "list" ? "draft-card-grid draft-card-list" : "draft-card-grid";
+
+  return (
+    <article className="draft-preview" data-content-density={draft.content_density}>
+      <header className="draft-preview-nav">
+        <span className="draft-preview-logo">H</span>
+        <nav>
+          <span>기업</span>
+          <span>문의</span>
+        </nav>
+      </header>
+
+      <section className="draft-cover" data-section="hero" />
+
+      {visible.company_summary !== false ? (
+        <section className="draft-summary" data-section="company_summary">
+          <p className="eyebrow">{draft.industry}</p>
+          <h1>{draft.company_name}</h1>
+          <p>{draft.one_line_intro}</p>
+          <div className="tag-row">
+            {tags.map((tag) => (
+              <span key={tag}>{tag}</span>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {contactEntries.length > 0 && visible.contact_info ? (
+        <section className="draft-section" data-section="contact_info">
+          <h2>기업 정보</h2>
+          <dl className="draft-meta-list">
+            {contactEntries.map(([key, value]) => (
+              <div key={key}>
+                <dt>{contactLabel(key)}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+
+      <section className="draft-section" data-section="company_intro">
+        <h2>기업 소개</h2>
+        <p>{draft.company_intro}</p>
+      </section>
+
+      <section className="draft-section" data-section="core_strengths">
+        <h2>핵심 강점</h2>
+        <ul className={strengthClassName}>
+          {draft.core_strengths.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      {draft.history.length > 0 && visible.history ? (
+        <section className="draft-section" data-section="history">
+          <h2>연혁</h2>
+          <ol className={historyClassName}>
+            {draft.history.map((item) => (
+              <li key={`${item.year}-${item.text}`}>
+                <strong>{item.year}</strong>
+                <span>{item.text}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
+      {draft.portfolio.length > 0 && visible.portfolio ? (
+        <section className="draft-section" data-section="portfolio">
+          <h2>포트폴리오</h2>
+          <div className={portfolioClassName}>
+            {draft.portfolio.map((item) => (
+              <article key={item.title || item.description}>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="draft-contact" data-section="contact_cta">
+        <h2>문의하기</h2>
+        <p>{draft.company_name}의 사업과 서비스가 궁금하시다면 문의해 주세요.</p>
+      </section>
+    </article>
+  );
+}
+
 function Field({
+  disabled = false,
   helper,
   label,
   onChange,
   value,
 }: {
+  disabled?: boolean;
   helper?: string;
   label: string;
   onChange: (value: string) => void;
@@ -494,29 +731,76 @@ function Field({
   return (
     <label className="ref-field">
       <span>{label}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} />
+      <input disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} />
       {helper ? <small>{helper}</small> : null}
     </label>
   );
 }
 
-function StepButtons({
-  back,
-  next,
-  nextLabel = "다음",
-}: {
-  back: () => void;
-  next: () => void;
-  nextLabel?: string;
-}) {
+function buildDraftPayload(form: BuilderForm) {
+  return {
+    draft_mode: "auto",
+    homepage_type: form.homepageType,
+    initial_prompt: form.initialPrompt,
+    company_name: form.companyName,
+    industry: form.industry,
+    business_type: form.businessType,
+    main_business_description: form.mainBusinessDescription,
+    contact: {
+      phone: form.contactPhone,
+      email: form.contactEmail,
+    },
+    history: parseHistory(form.historyItems),
+    portfolio: parsePortfolio(form.portfolioItems),
+  };
+}
+
+function parseHistory(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [year = "", ...textParts] = line.split("|").map((part) => part.trim());
+      return { year, text: textParts.join(" | ") };
+    })
+    .filter((item) => item.year && item.text);
+}
+
+function parsePortfolio(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [title = "", ...descriptionParts] = line.split("|").map((part) => part.trim());
+      return { title, description: descriptionParts.join(" | ") };
+    })
+    .filter((item) => item.title || item.description);
+}
+
+function contactLabel(key: string) {
   return (
-    <div className="ref-actions">
-      <button className="ref-secondary-button" onClick={back} type="button">
-        이전
-      </button>
-      <button className="ref-primary-button" onClick={next} type="button">
-        {nextLabel}
-      </button>
-    </div>
+    {
+      address: "주소",
+      phone: "전화",
+      email: "이메일",
+      website_url: "웹사이트",
+    }[key] || key
+  );
+}
+
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return (await response.json()) as T;
+  }
+
+  const text = await response.text();
+  const htmlError = text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html");
+  throw new Error(
+    htmlError
+      ? "서버가 JSON 대신 HTML 오류 페이지를 반환했습니다. 개발 서버를 새로고침한 뒤 다시 시도해 주세요."
+      : text.slice(0, 240) || "서버 응답을 JSON으로 읽을 수 없습니다.",
   );
 }

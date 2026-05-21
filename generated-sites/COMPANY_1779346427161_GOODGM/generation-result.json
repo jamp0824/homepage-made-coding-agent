@@ -1,0 +1,38 @@
+{
+  "request_id": "REQ_CHAT_1779346427161_GOODGM",
+  "company_id": "COMPANY_1779346427161_GOODGM",
+  "status": "agent_failed",
+  "homepage_type": "company_intro",
+  "template_id": "company_intro_basic",
+  "generated_path": "generated-sites/COMPANY_1779346427161_GOODGM",
+  "homepage_url": "/homepage/COMPANY_1779346427161_GOODGM",
+  "model_provider": "goose_agent",
+  "model_name": "configured-goose-model",
+  "generated_files": [
+    "content.json",
+    "assets.json",
+    "metadata.json",
+    "page.tsx",
+    "index.html",
+    "styles.css",
+    "content.draft.json",
+    "generation-result.json",
+    "validation-report.json",
+    "agent-run-report.json",
+    "agent-run-report.md"
+  ],
+  "build_result": {
+    "passed": false,
+    "command": "npm run build",
+    "errors": []
+  },
+  "validation_result": {
+    "passed": false,
+    "errors": [
+      "generation has not been validated yet"
+    ],
+    "warnings": []
+  },
+  "retry_count": 0,
+  "completed_at": "2026-05-21T06:54:15.580Z"
+}
