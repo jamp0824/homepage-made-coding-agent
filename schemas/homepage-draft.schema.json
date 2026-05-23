@@ -120,6 +120,36 @@
       }
     },
     "content_density": { "type": "string", "enum": ["compact", "standard", "rich"] },
+    "design_tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": { "type": "string", "enum": ["#2f6fed", "#12a37f", "#4f7fe8", "#264f9d", "#0f766e", "#334155"] },
+        "accent": { "type": "string", "enum": ["#2f6fed", "#12a37f", "#4f7fe8", "#264f9d", "#0f766e", "#334155"] },
+        "radius": { "type": "string", "enum": ["none", "sm", "md", "lg"] }
+      }
+    },
+    "section_order": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["hero", "company_summary", "company_intro", "core_strengths", "contact_info", "history", "portfolio", "featured_products", "product_area", "product_registration_cta", "contact_cta"]
+      }
+    },
+    "block_overrides": {
+      "type": "object",
+      "propertyNames": {
+        "enum": ["hero", "company_summary", "company_intro", "core_strengths", "contact_info", "history", "portfolio", "featured_products", "product_area", "product_registration_cta", "contact_cta"]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "emphasis": { "type": "string", "enum": ["default", "strong"] }
+        }
+      }
+    },
     "content_source": {
       "type": "string",
       "enum": ["request_only", "ai_suggested", "ai_suggested_user_confirmed"]

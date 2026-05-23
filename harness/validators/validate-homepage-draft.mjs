@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import {
+  normalizeBlockOverrides,
+  normalizeDesignTokens,
+  normalizeSectionOrder,
+} from "../../frontend/lib/homepage-controls.mjs";
 
 const draftPath = process.argv[2];
 
@@ -73,6 +78,7 @@ if (draft) {
 
   validateVisibility();
   validateLayout();
+  validateDesignControls();
   validateNonEmptyVisibleData();
 
   if (!Array.isArray(draft.core_strengths) || draft.core_strengths.length === 0) {
@@ -151,6 +157,21 @@ function validateLayout() {
     if (typeof layout !== "string" || !allowed.has(layout)) {
       errors.push(`section_layout.${section} has unsupported layout: ${layout}`);
     }
+  }
+}
+
+function validateDesignControls() {
+  const normalizedTokens = normalizeDesignTokens(draft.design_tokens);
+  if (draft.design_tokens && JSON.stringify(normalizedTokens) !== JSON.stringify(draft.design_tokens)) {
+    errors.push("design_tokens contains unsupported values");
+  }
+  const normalizedOrder = normalizeSectionOrder(draft.section_order, draft.homepage_type);
+  if (draft.section_order && JSON.stringify(normalizedOrder) !== JSON.stringify(draft.section_order)) {
+    errors.push("section_order contains unsupported or duplicate sections");
+  }
+  const normalizedOverrides = normalizeBlockOverrides(draft.block_overrides);
+  if (draft.block_overrides && JSON.stringify(normalizedOverrides) !== JSON.stringify(draft.block_overrides)) {
+    errors.push("block_overrides contains unsupported values");
   }
 }
 

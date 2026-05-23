@@ -1,5 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  allowedLayouts,
+  allowedVisibilitySections,
+  contentDensities,
+  defaultSectionLayout,
+  forbiddenPhrases,
+  hasForbiddenPhrase,
+  normalizeBlockOverrides,
+  normalizeDesignTokens,
+  normalizeSectionLayout,
+  normalizeSectionOrder,
+  normalizeSectionVisibility,
+  requiredVisibleSections,
+  type BlockOverride,
+  type DesignTokens,
+  type SectionId,
+} from "./homepage-controls.mjs";
 
 export type HomepageType = "company_intro" | "product";
 export type ContentDensity = "compact" | "standard" | "rich";
@@ -56,6 +73,9 @@ export type HomepageDraft = {
   section_visibility: Record<string, boolean>;
   section_layout: Record<string, string>;
   content_density: ContentDensity;
+  design_tokens?: DesignTokens;
+  section_order?: SectionId[];
+  block_overrides?: Partial<Record<SectionId, BlockOverride>>;
   content_source: ContentSource;
   missing_fields: string[];
   validation_result: DraftValidationResult;
@@ -102,6 +122,9 @@ export type DraftPatch = Partial<
     | "section_visibility"
     | "section_layout"
     | "content_density"
+    | "design_tokens"
+    | "section_order"
+    | "block_overrides"
     | "content_source"
   >
 >;
@@ -114,40 +137,9 @@ const requiredFields = [
   "business_type",
   "main_business_description",
 ] as const;
-const forbiddenPhrases = [
-  "업계 1위",
-  "국내 최고",
-  "압도적",
-  "인증받은",
-  "수상 경력",
-  "다수의 고객사",
-  "10년 이상",
-  "풍부한 연혁",
-  "매출",
-  "납품 실적",
-  "특허",
-];
-const requiredVisibleSections = new Set(["company_intro", "core_strengths", "contact_cta"]);
-const allowedVisibilitySections = new Set([
-  "company_summary",
-  "contact_info",
-  "company_intro",
-  "core_strengths",
-  "history",
-  "portfolio",
-  "featured_products",
-  "product_area",
-  "product_registration_cta",
-  "contact_cta",
-]);
-const allowedLayouts: Record<string, Set<string>> = {
-  core_strengths: new Set(["list", "grid_2"]),
-  history: new Set(["timeline", "compact"]),
-  portfolio: new Set(["list", "grid_2"]),
-  featured_products: new Set(["grid_2", "grid_3"]),
-  product_area: new Set(["grid_2", "grid_3"]),
-};
-const allowedDensities = new Set<ContentDensity>(["compact", "standard", "rich"]);
+const requiredVisibleSectionSet = new Set<string>(requiredVisibleSections);
+const allowedVisibilitySectionSet = new Set<string>(allowedVisibilitySections);
+const allowedDensitySet = new Set<ContentDensity>(contentDensities);
 
 export function createHomepageDraft(payload: DraftCreatePayload) {
   const now = new Date().toISOString();
@@ -356,6 +348,9 @@ export function buildConfirmedRequestFromDraft(draft: HomepageDraft) {
     section_visibility: draft.section_visibility,
     section_layout: draft.section_layout,
     content_density: draft.content_density,
+    design_tokens: draft.design_tokens,
+    section_order: draft.section_order,
+    block_overrides: draft.block_overrides,
     content_source: "ai_suggested_user_confirmed",
     draft_id: draft.draft_id,
     confirmed_at: now,
@@ -395,11 +390,11 @@ export function validateDraftState(draft: HomepageDraft): DraftValidationResult 
   if (!["company_intro", "product"].includes(draft.homepage_type)) {
     errors.push("homepage_type must be company_intro or product");
   }
-  if (!allowedDensities.has(draft.content_density)) {
+  if (!allowedDensitySet.has(draft.content_density)) {
     errors.push("content_density must be compact, standard, or rich");
   }
   for (const [section, visible] of Object.entries(draft.section_visibility || {})) {
-    if (!allowedVisibilitySections.has(section)) {
+    if (!allowedVisibilitySectionSet.has(section)) {
       errors.push(`section_visibility has unsupported section: ${section}`);
     }
     if (typeof visible !== "boolean") {
@@ -410,14 +405,26 @@ export function validateDraftState(draft: HomepageDraft): DraftValidationResult 
     const allowed = allowedLayouts[section];
     if (!allowed) {
       errors.push(`section_layout has unsupported section: ${section}`);
-    } else if (typeof layout !== "string" || !allowed.has(layout)) {
+    } else if (typeof layout !== "string" || !allowed.includes(layout)) {
       errors.push(`section_layout.${section} has unsupported layout: ${layout}`);
     }
   }
-  for (const section of requiredVisibleSections) {
+  for (const section of requiredVisibleSectionSet) {
     if (draft.section_visibility[section] === false) {
       errors.push(`required section cannot be hidden: ${section}`);
     }
+  }
+  const normalizedTokens = normalizeDesignTokens(draft.design_tokens);
+  if (draft.design_tokens && JSON.stringify(normalizedTokens) !== JSON.stringify(draft.design_tokens)) {
+    errors.push("design_tokens contains unsupported values");
+  }
+  const normalizedOrder = normalizeSectionOrder(draft.section_order, draft.homepage_type);
+  if (draft.section_order && JSON.stringify(normalizedOrder) !== JSON.stringify(draft.section_order)) {
+    errors.push("section_order contains unsupported or duplicate sections");
+  }
+  const normalizedOverrides = normalizeBlockOverrides(draft.block_overrides);
+  if (draft.block_overrides && JSON.stringify(normalizedOverrides) !== JSON.stringify(draft.block_overrides)) {
+    errors.push("block_overrides contains unsupported values");
   }
   if (!Array.isArray(draft.core_strengths) || draft.core_strengths.length === 0) {
     errors.push("core_strengths must contain at least one item");
@@ -562,7 +569,7 @@ function applyVisibilityRequest({
 
   const section = inferSectionFromMessage(message);
   if (!section) return false;
-  if (requiredVisibleSections.has(section) && hide) {
+  if (requiredVisibleSectionSet.has(section) && hide) {
     warnings.push(`${section}_cannot_be_hidden`);
     return false;
   }
@@ -604,6 +611,15 @@ function mergeDraftPatch(draft: HomepageDraft, patch: DraftPatch): HomepageDraft
       ...draft.section_layout,
       ...(patch.section_layout || {}),
     },
+    design_tokens: {
+      ...(draft.design_tokens || {}),
+      ...(patch.design_tokens || {}),
+    },
+    section_order: patch.section_order || draft.section_order,
+    block_overrides: {
+      ...(draft.block_overrides || {}),
+      ...(patch.block_overrides || {}),
+    },
   };
 }
 
@@ -620,8 +636,18 @@ function combineDraftPatches(first: DraftPatch, second: DraftPatch): DraftPatch 
     ...(first.section_layout || {}),
     ...(second.section_layout || {}),
   };
+  const designTokens = {
+    ...(first.design_tokens || {}),
+    ...(second.design_tokens || {}),
+  };
+  const blockOverrides = {
+    ...(first.block_overrides || {}),
+    ...(second.block_overrides || {}),
+  };
   if (Object.keys(sectionVisibility).length > 0) combined.section_visibility = sectionVisibility;
   if (Object.keys(sectionLayout).length > 0) combined.section_layout = sectionLayout;
+  if (Object.keys(designTokens).length > 0) combined.design_tokens = designTokens;
+  if (Object.keys(blockOverrides).length > 0) combined.block_overrides = blockOverrides;
   return combined;
 }
 
@@ -666,24 +692,21 @@ function sanitizeDraftPatch(draft: HomepageDraft, patch: DraftPatch): DraftPatch
     safePatch.content_density = patch.content_density;
   }
   if (patch.section_visibility && typeof patch.section_visibility === "object") {
-    const sectionVisibility: Record<string, boolean> = {};
-    for (const [section, visible] of Object.entries(patch.section_visibility)) {
-      if (!allowedVisibilitySections.has(section) || typeof visible !== "boolean") continue;
-      if (requiredVisibleSections.has(section) && visible === false) continue;
-      if (visible === true && !sectionHasData(section, draft)) continue;
-      sectionVisibility[section] = visible;
-    }
+    const sectionVisibility = normalizeSectionVisibility(patch.section_visibility, (section) =>
+      sectionHasData(section, draft),
+    );
     if (Object.keys(sectionVisibility).length > 0) safePatch.section_visibility = sectionVisibility;
   }
   if (patch.section_layout && typeof patch.section_layout === "object") {
-    const sectionLayout: Record<string, string> = {};
-    for (const [section, layout] of Object.entries(patch.section_layout)) {
-      const allowed = allowedLayouts[section];
-      if (!allowed || typeof layout !== "string" || !allowed.has(layout)) continue;
-      sectionLayout[section] = layout;
-    }
+    const sectionLayout = normalizeSectionLayout(patch.section_layout);
     if (Object.keys(sectionLayout).length > 0) safePatch.section_layout = sectionLayout;
   }
+  const designTokens = normalizeDesignTokens(patch.design_tokens);
+  if (Object.keys(designTokens).length > 0) safePatch.design_tokens = designTokens;
+  const sectionOrder = normalizeSectionOrder(patch.section_order, draft.homepage_type);
+  if (sectionOrder.length > 0) safePatch.section_order = sectionOrder;
+  const blockOverrides = normalizeBlockOverrides(patch.block_overrides);
+  if (Object.keys(blockOverrides).length > 0) safePatch.block_overrides = blockOverrides;
   if (
     patch.content_source === "request_only" ||
     patch.content_source === "ai_suggested" ||
@@ -693,10 +716,6 @@ function sanitizeDraftPatch(draft: HomepageDraft, patch: DraftPatch): DraftPatch
   }
 
   return safePatch;
-}
-
-function hasForbiddenPhrase(value: string) {
-  return forbiddenPhrases.some((phrase) => value.includes(phrase));
 }
 
 function extractFieldChange(message: string, fieldPatterns: string[]) {
@@ -750,14 +769,7 @@ function buildDefaultVisibility(homepageType: HomepageType, base: ReturnType<typ
 }
 
 function buildDefaultLayout(homepageType: HomepageType): Record<string, string> {
-  return homepageType === "product"
-    ? { core_strengths: "grid_2", product_area: "grid_2" }
-    : {
-        core_strengths: "grid_2",
-        history: "timeline",
-        portfolio: "grid_2",
-        featured_products: "grid_2",
-      };
+  return { ...defaultSectionLayout[homepageType] };
 }
 
 function buildOneLineIntro(base: ReturnType<typeof normalizeDraftPayload>) {

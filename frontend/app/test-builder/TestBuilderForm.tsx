@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { type KeyboardEvent, useState } from "react";
+import { HomepageView } from "../../lib/homepage-view-renderer.mjs";
+import { draftToViewModel } from "../../lib/homepage-view-model.mjs";
 
 type DraftStatus = "needs_input" | "drafted" | "edited" | "confirmed" | "validation_failed";
 type HomepageType = "company_intro" | "product";
@@ -27,6 +29,9 @@ type Draft = {
   section_visibility: Record<string, boolean>;
   section_layout: Record<string, string>;
   content_density: "compact" | "standard" | "rich";
+  design_tokens?: Record<string, string>;
+  section_order?: string[];
+  block_overrides?: Record<string, { emphasis?: string }>;
   validation_result: {
     passed: boolean;
     errors: string[];
@@ -609,7 +614,7 @@ function BuilderStep({
 
       <section className="builder-preview-panel">
         <div className="builder-preview-frame">
-          <DraftPreview draft={draft} />
+          <HomepageView model={draftToViewModel(draft)} mode="draft" />
         </div>
       </section>
     </section>

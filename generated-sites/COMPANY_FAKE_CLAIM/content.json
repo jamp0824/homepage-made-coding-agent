@@ -86,6 +86,9 @@
     "featured_products": "grid_2"
   },
   "content_density": "standard",
+  "design_tokens": {},
+  "section_order": [],
+  "block_overrides": {},
   "content_source": "request_only",
   "content_draft_applied": false,
   "draft_id": "",

@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import {
+  allowedBlockEmphasis,
+  allowedDesignColors,
+  allowedRadii,
+  sectionIds,
+} from "../frontend/lib/homepage-controls.mjs";
 
 const requestPath = process.argv[2];
 
@@ -32,6 +38,9 @@ const allowedTopLevelFields = new Set([
   "section_visibility",
   "section_layout",
   "content_density",
+  "design_tokens",
+  "section_order",
+  "block_overrides",
   "content_source",
   "content_draft",
   "draft_id",
@@ -162,6 +171,9 @@ if (!request || typeof request !== "object" || Array.isArray(request)) {
   if ("portfolio" in request) validatePortfolio(request.portfolio, errors);
   if ("section_visibility" in request) validateSectionVisibility(request.section_visibility, errors);
   if ("section_layout" in request) validateSectionLayout(request.section_layout, errors);
+  if ("design_tokens" in request) validateDesignTokens(request.design_tokens, errors);
+  if ("section_order" in request) validateSectionOrder(request.section_order, errors);
+  if ("block_overrides" in request) validateBlockOverrides(request.block_overrides, errors);
   if (
     "content_density" in request &&
     !["compact", "standard", "rich"].includes(request.content_density)
@@ -256,6 +268,9 @@ function validateContentDraft(contentDraft, outputErrors) {
     "section_visibility",
     "section_layout",
     "content_density",
+    "design_tokens",
+    "section_order",
+    "block_overrides",
     "hero_image_theme",
     "hero_image_keywords",
     "cta_text",
@@ -315,6 +330,15 @@ function validateContentDraft(contentDraft, outputErrors) {
   }
   if ("section_layout" in contentDraft) {
     validateSectionLayout(contentDraft.section_layout, outputErrors, "content_draft.");
+  }
+  if ("design_tokens" in contentDraft) {
+    validateDesignTokens(contentDraft.design_tokens, outputErrors, "content_draft.");
+  }
+  if ("section_order" in contentDraft) {
+    validateSectionOrder(contentDraft.section_order, outputErrors, "content_draft.");
+  }
+  if ("block_overrides" in contentDraft) {
+    validateBlockOverrides(contentDraft.block_overrides, outputErrors, "content_draft.");
   }
   if (
     "content_density" in contentDraft &&
@@ -391,6 +415,70 @@ function validateSectionLayout(sectionLayout, outputErrors) {
     }
     if (typeof layout !== "string" || !allowed.has(layout)) {
       outputErrors.push(`section_layout.${section} has unsupported layout: ${layout}`);
+    }
+  }
+}
+
+function validateDesignTokens(designTokens, outputErrors, prefix = "") {
+  if (!designTokens || typeof designTokens !== "object" || Array.isArray(designTokens)) {
+    outputErrors.push(`${prefix}design_tokens must be an object`);
+    return;
+  }
+
+  const allowedFields = new Set(["primary", "accent", "radius"]);
+  for (const [field, value] of Object.entries(designTokens)) {
+    if (!allowedFields.has(field)) {
+      outputErrors.push(`${prefix}design_tokens has unsupported field: ${field}`);
+      continue;
+    }
+    if ((field === "primary" || field === "accent") && !allowedDesignColors.includes(value)) {
+      outputErrors.push(`${prefix}design_tokens.${field} must be an allowed palette value`);
+    }
+    if (field === "radius" && !allowedRadii.includes(value)) {
+      outputErrors.push(`${prefix}design_tokens.radius has unsupported value: ${value}`);
+    }
+  }
+}
+
+function validateSectionOrder(sectionOrder, outputErrors, prefix = "") {
+  if (!Array.isArray(sectionOrder)) {
+    outputErrors.push(`${prefix}section_order must be an array`);
+    return;
+  }
+  const seen = new Set();
+  sectionOrder.forEach((section, index) => {
+    if (!sectionIds.includes(section)) {
+      outputErrors.push(`${prefix}section_order[${index}] has unsupported section: ${section}`);
+    }
+    if (seen.has(section)) {
+      outputErrors.push(`${prefix}section_order contains duplicate section: ${section}`);
+    }
+    seen.add(section);
+  });
+}
+
+function validateBlockOverrides(blockOverrides, outputErrors, prefix = "") {
+  if (!blockOverrides || typeof blockOverrides !== "object" || Array.isArray(blockOverrides)) {
+    outputErrors.push(`${prefix}block_overrides must be an object`);
+    return;
+  }
+  for (const [section, override] of Object.entries(blockOverrides)) {
+    if (!sectionIds.includes(section)) {
+      outputErrors.push(`${prefix}block_overrides has unsupported section: ${section}`);
+      continue;
+    }
+    if (!override || typeof override !== "object" || Array.isArray(override)) {
+      outputErrors.push(`${prefix}block_overrides.${section} must be an object`);
+      continue;
+    }
+    for (const [field, value] of Object.entries(override)) {
+      if (field !== "emphasis") {
+        outputErrors.push(`${prefix}block_overrides.${section} has unsupported field: ${field}`);
+        continue;
+      }
+      if (!allowedBlockEmphasis.includes(value)) {
+        outputErrors.push(`${prefix}block_overrides.${section}.emphasis has unsupported value: ${value}`);
+      }
     }
   }
 }
