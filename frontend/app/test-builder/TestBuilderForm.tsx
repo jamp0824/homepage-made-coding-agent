@@ -63,6 +63,20 @@ type GenerationJob = {
   };
 };
 
+type GenerationCustomer = {
+  status: string;
+  homepage_url: string;
+  preview_available: boolean;
+};
+
+type GenerationDebug = {
+  queue_state?: string | null;
+  generated_path?: string | null;
+  validation_result?: { passed?: boolean } | null;
+  build_result?: { passed?: boolean } | null;
+  retry_count?: number | null;
+};
+
 type DraftResponse = {
   ok: boolean;
   draft_id: string;
@@ -84,10 +98,14 @@ type MessageResponse = {
 
 type GenerationResponse = {
   ok: boolean;
-  job: GenerationJob;
+  job_id?: string;
+  request_id?: string;
+  company_id?: string;
+  status?: string;
+  customer?: GenerationCustomer;
+  debug?: GenerationDebug;
+  job?: GenerationJob;
   error?: string;
-  stdout?: string;
-  stderr?: string;
 };
 
 type BuilderForm = {
@@ -234,9 +252,34 @@ export default function TestBuilderForm() {
         }),
       });
       const body = await readJsonResponse<GenerationResponse>(response);
-      setGeneration(body);
+      const queuedGeneration = adaptGenerationResponse(body);
+      setGeneration(queuedGeneration);
       if (!response.ok) {
         setError(body.error || "최종 생성 실패");
+        return;
+      }
+
+      const jobId = queuedGeneration.job_id || queuedGeneration.job?.job_id;
+      if (!jobId) {
+        setError("생성 job id를 확인할 수 없습니다.");
+        return;
+      }
+
+      let latestGeneration = queuedGeneration;
+      for (let attempt = 0; attempt < 60 && isPollingStatus(latestGeneration.status); attempt += 1) {
+        await wait(2000);
+        const pollResponse = await fetch(`/api/homepage-generation-jobs/${jobId}`);
+        const pollBody = await readJsonResponse<GenerationResponse>(pollResponse);
+        latestGeneration = adaptGenerationResponse(pollBody);
+        setGeneration(latestGeneration);
+        if (!pollResponse.ok) {
+          setError(pollBody.error || "생성 상태 조회 실패");
+          return;
+        }
+      }
+
+      if (isPollingStatus(latestGeneration.status)) {
+        setError("작업이 아직 대기 중입니다. worker가 실행 중인지 확인해 주세요.");
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "최종 생성 요청 실패");
@@ -477,7 +520,7 @@ function BuilderStep({
   session: Session | null;
   setChatInput: (value: string) => void;
 }) {
-  const generated = generation?.ok && generation.job;
+  const generatedJob = isGeneratedGeneration(generation) ? generation.job : null;
   const canSend = Boolean(chatInput.trim()) && !isSending;
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -528,7 +571,7 @@ function BuilderStep({
             text={draft.validation_result.errors[0] || "초안 검증을 통과해야 생성할 수 있습니다."}
           />
         ) : null}
-        {generated ? <GenerationResult job={generation.job} /> : null}
+        {generatedJob ? <GenerationResult job={generatedJob} /> : null}
 
         <div className="builder-panel-body">
           <div className="draft-message-list">
@@ -788,6 +831,49 @@ function contactLabel(key: string) {
       website_url: "웹사이트",
     }[key] || key
   );
+}
+
+function adaptGenerationResponse(response: GenerationResponse): GenerationResponse {
+  if (response.job) return response;
+
+  const status = response.customer?.status || response.status || "queued";
+  const companyId = response.company_id || "";
+  const job: GenerationJob = {
+    job_id: response.job_id || "",
+    request_id: response.request_id || "",
+    company_id: companyId,
+    status,
+    homepage_url: response.customer?.homepage_url || (companyId ? `/homepage/${companyId}` : ""),
+    generated_path: response.debug?.generated_path || (companyId ? `generated-sites/${companyId}` : ""),
+    exit_code: null,
+    result: {
+      validation_result: response.debug?.validation_result || undefined,
+      build_result: response.debug?.build_result || undefined,
+      retry_count: response.debug?.retry_count ?? undefined,
+    },
+  };
+
+  return {
+    ...response,
+    status,
+    job,
+  };
+}
+
+function isPollingStatus(status?: string) {
+  return status === "queued" || status === "running";
+}
+
+function isGeneratedGeneration(generation: GenerationResponse | null): generation is GenerationResponse & { job: GenerationJob } {
+  if (!generation?.job) return false;
+  return (
+    (generation.job.status === "generated" || generation.job.status === "published") &&
+    generation.customer?.preview_available !== false
+  );
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 async function readJsonResponse<T>(response: Response): Promise<T> {

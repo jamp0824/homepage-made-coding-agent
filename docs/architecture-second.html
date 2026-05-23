@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+<title>Chat Homepage Generation · Architecture & Status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --surface-1: #131316;
+    --surface-2: #1a1a1e;
+    --surface-3: #222228;
+    --bg-grid: #0e0e10;
+    --border: #26262d;
+    --border-strong: #34343d;
+    --text: #f4f4f5;
+    --text-dim: #a1a1aa;
+    --text-muted: #6b6b75;
+    --accent: #c6f24e;
+
+    --ok: #84e06b;
+    --partial: #f5b13d;
+    --miss: #f4737f;
+    --info: #7dd3fc;
+
+    --L-ui: #fbbf24;
+    --L-api: #a78bfa;
+    --L-draft: #5eead4;
+    --L-goose: #fb7185;
+    --L-gen: #60a5fa;
+    --L-harness: #c084fc;
+    --L-site: #c6f24e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geist', -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    letter-spacing: -0.005em;
+    background-image:
+      radial-gradient(circle at 12% 6%, rgba(198,242,78,0.04), transparent 38%),
+      radial-gradient(circle at 90% 94%, rgba(167,139,250,0.04), transparent 40%);
+    min-height: 100vh;
+  }
+  body::before {
+    content:''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 48px 24px 96px; position: relative; z-index: 1; }
+
+  .hero { margin-bottom: 48px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px;
+    background: var(--surface-1); margin-bottom: 20px;
+  }
+  .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  h1 { font-family: 'Fraunces', serif; font-weight: 400; font-size: clamp(30px,4.6vw,48px); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 16px; }
+  h1 em { font-style: italic; color: var(--accent); font-weight: 300; }
+  .sub { color: var(--text-dim); font-size: 15px; max-width: 720px; line-height: 1.65; }
+  .sub strong { color: var(--text); font-weight: 500; }
+
+  section { margin-top: 64px; }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
+  .sec-num { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; }
+  .sec-title { font-family: 'Fraunces', serif; font-weight: 400; font-size: 24px; letter-spacing: -0.01em; }
+  .sec-title em { font-style: italic; color: var(--accent); }
+  .sec-desc { color: var(--text-dim); font-size: 13px; margin: 12px 0 24px; max-width: 760px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .legend-item { display: inline-flex; align-items: center; gap: 8px; font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .sdot.ok { background: var(--ok); }
+  .sdot.partial { background: var(--partial); }
+  .sdot.miss { background: var(--miss); }
+
+  .pill { font-family: 'Geist Mono', monospace; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; letter-spacing: 0.02em; }
+  .pill.ok { color: var(--ok); background: rgba(132,224,107,0.1); border: 1px solid rgba(132,224,107,0.25); }
+  .pill.partial { color: var(--partial); background: rgba(245,177,61,0.1); border: 1px solid rgba(245,177,61,0.25); }
+  .pill.miss { color: var(--miss); background: rgba(244,115,127,0.1); border: 1px solid rgba(244,115,127,0.25); }
+
+  .dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 14px; margin-top: 8px; }
+  .gauge { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .gauge-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .gauge-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .gauge-pct { font-family: 'Geist Mono', monospace; font-size: 18px; font-weight: 600; }
+  .gauge-track { height: 6px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
+  .gauge-fill { height: 100%; border-radius: 999px; }
+  .gauge-note { margin-top: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+  .g-ok .gauge-fill { background: var(--ok); } .g-ok .gauge-pct { color: var(--ok); }
+  .g-partial .gauge-fill { background: var(--partial); } .g-partial .gauge-pct { color: var(--partial); }
+  .g-miss .gauge-fill { background: var(--miss); } .g-miss .gauge-pct { color: var(--miss); }
+
+  .overall { margin-top: 14px; background: linear-gradient(180deg, var(--surface-1), var(--surface-2)); border: 1px solid var(--border); border-radius: 14px; padding: 24px 28px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+  .overall-big { font-family: 'Fraunces', serif; font-size: 56px; font-weight: 300; color: var(--accent); line-height: 1; }
+  .overall-big span { font-size: 24px; color: var(--text-muted); }
+  .overall-text { flex: 1; min-width: 260px; }
+  .overall-text strong { display: block; font-size: 14px; margin-bottom: 6px; }
+  .overall-text p { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+
+  .arch { margin-top: 8px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 24px; overflow-x: auto; }
+  .layer { display: grid; grid-template-columns: 168px 1fr 210px; gap: 20px; align-items: stretch; padding: 18px 0; border-bottom: 1px dashed var(--border); }
+  .layer:last-child { border-bottom: none; }
+  .layer-meta { display: flex; flex-direction: column; gap: 3px; padding-left: 14px; border-left: 3px solid var(--layer-color, var(--accent)); padding-top: 2px; }
+  .layer-num { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text-muted); letter-spacing: 0.1em; }
+  .layer-name { font-size: 14px; font-weight: 600; line-height: 1.25; }
+  .layer-name-en { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--layer-color, var(--text-muted)); text-transform: uppercase; letter-spacing: 0.06em; }
+  .layer-status { margin-top: 6px; }
+  .layer-body { display: flex; flex-direction: column; gap: 9px; }
+  .comp-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .comp { display: inline-flex; align-items: center; gap: 6px; font-family: 'Geist Mono', monospace; font-size: 11px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 5px 9px; border-radius: 6px; line-height: 1.3; }
+  .comp::before { content:''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .comp.s-ok::before { background: var(--ok); }
+  .comp.s-partial::before { background: var(--partial); }
+  .comp.s-miss::before { background: var(--miss); }
+  .comp.s-miss { color: var(--text-muted); border-style: dashed; }
+  .layer-note { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+  .layer-note code, .inline-code { font-family: 'Geist Mono', monospace; font-size: 11px; background: var(--surface-3); padding: 1px 5px; border-radius: 4px; }
+  .layer-side { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text-muted); line-height: 1.55; padding: 9px 12px; background: var(--bg-grid); border-radius: 8px; border: 1px solid var(--border); align-self: start; }
+  .layer-side-title { display:block; color: var(--text); text-transform: uppercase; letter-spacing: 0.1em; font-size: 9px; margin-bottom: 6px; }
+  .layer-side code { color: var(--layer-color, var(--text-dim)); display: block; word-break: break-all; }
+  .arrow-between { text-align: center; margin: -6px 0; line-height: 1; position: relative; z-index: 2; }
+  .arrow-between::before { content:'↓'; display: inline-block; padding: 2px 8px; background: var(--surface-1); color: var(--text-muted); font-size: 13px; }
+
+  .flow-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 8px; }
+  .flow-col { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+  .flow-col.current { border-color: rgba(245,177,61,0.3); }
+  .flow-col.target { border-color: rgba(132,224,107,0.3); }
+  .flow-col-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .flow-col-head h3 { font-size: 14px; font-weight: 600; }
+  .flow-chain { display: flex; flex-direction: column; gap: 0; }
+  .chain-node { font-family: 'Geist Mono', monospace; font-size: 11.5px; padding: 9px 12px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); line-height: 1.4; }
+  .chain-node.hot { border-color: rgba(245,177,61,0.4); background: rgba(245,177,61,0.05); color: var(--partial); }
+  .chain-node.cool { border-color: rgba(132,224,107,0.3); background: rgba(132,224,107,0.05); color: var(--ok); }
+  .chain-arr { text-align: center; color: var(--text-muted); font-size: 12px; padding: 4px 0; }
+  .flow-verdict { margin-top: 16px; font-size: 12px; line-height: 1.55; padding: 12px; border-radius: 8px; }
+  .flow-verdict.bad { color: var(--partial); background: rgba(245,177,61,0.06); border: 1px solid rgba(245,177,61,0.15); }
+  .flow-verdict.good { color: var(--ok); background: rgba(132,224,107,0.06); border: 1px solid rgba(132,224,107,0.15); }
+
+  .matrix { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-top: 8px; }
+  .mrow { display: grid; grid-template-columns: 170px 1fr 1fr 90px; gap: 14px; padding: 13px 18px; border-bottom: 1px solid var(--border); align-items: center; }
+  .mrow:last-child { border-bottom: none; }
+  .mrow.header { background: var(--surface-2); font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 11px 18px; }
+  .m-item { font-size: 13px; font-weight: 500; }
+  .m-target, .m-current { font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+  .m-pct { font-family: 'Geist Mono', monospace; font-size: 13px; font-weight: 600; text-align: right; }
+  .m-pct.ok { color: var(--ok); } .m-pct.partial { color: var(--partial); } .m-pct.miss { color: var(--miss); }
+
+  .insight { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px,1fr)); gap: 18px; margin-top: 8px; }
+  .insight-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .insight-card.warn { border-color: rgba(245,177,61,0.25); }
+  .insight-card h4 { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  .insight-card h4 .ic { font-size: 16px; }
+  .insight-card p { color: var(--text-dim); font-size: 13px; line-height: 1.6; margin-bottom: 10px; }
+  .insight-card p:last-child { margin-bottom: 0; }
+  .insight-card .files { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--text-muted); line-height: 1.7; background: var(--bg-grid); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; }
+  .insight-card .files b { color: var(--text-dim); font-weight: 400; }
+
+  .prios { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+  .prio { display: grid; grid-template-columns: 52px 1fr; gap: 18px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; }
+  .prio-rank { font-family: 'Fraunces', serif; font-size: 36px; font-weight: 300; color: var(--accent); line-height: 1; }
+  .prio-body h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .prio-body p { color: var(--text-dim); font-size: 13px; line-height: 1.6; margin-bottom: 10px; }
+  .prio-code { font-family: 'Geist Mono', monospace; font-size: 11.5px; color: var(--text-dim); background: var(--bg-grid); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; line-height: 1.7; white-space: pre-wrap; overflow-x: auto; }
+  .prio-code .c { color: var(--text-muted); }
+  .prio-code .k { color: var(--accent); }
+  .prio-code .del { color: var(--miss); }
+  .prio-code .add { color: var(--ok); }
+
+  .storage { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 24px; font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 1.85; color: var(--text-dim); overflow-x: auto; margin-top: 8px; }
+
+  footer { margin-top: 80px; padding-top: 32px; border-top: 1px solid var(--border); font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  footer .dot { color: var(--accent); }
+
+  @media (max-width: 860px) {
+    .wrap { padding: 32px 16px 64px; }
+    .layer { grid-template-columns: 1fr; gap: 12px; }
+    .flow-compare, .insight { grid-template-columns: 1fr; }
+    .mrow { grid-template-columns: 1fr; gap: 6px; }
+    .mrow.header { display: none; }
+    .m-pct { text-align: left; }
+    .overall-big { font-size: 44px; }
+    .prio { grid-template-columns: 1fr; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="tag"><span class="dot"></span>Architecture &amp; Status · v2</span>
+    <h1>Chat Homepage Generation<br/><em>현황 진단 + 목표 아키텍처</em></h1>
+    <p class="sub">설계 철학 — <strong>Chat → Draft → Goose → Generator → Harness → Site</strong> — 은 코드에 잘 반영됐다. 다만 <strong>비동기 job · status polling · customer/debug 분리</strong>가 아직 덜 배선되어 있다. 각 레이어에 실제 파일 경로와 구현 상태를 표시한다.</p>
+  </header>
+
+  <section style="margin-top:48px;">
+    <div class="sec-head"><span class="sec-num">00</span><h2 class="sec-title">Alignment <em>Dashboard</em></h2></div>
+    <div class="legend">
+      <span class="legend-item"><span class="sdot ok"></span>Done (구현 완료)</span>
+      <span class="legend-item"><span class="sdot partial"></span>Partial (일부)</span>
+      <span class="legend-item"><span class="sdot miss"></span>Missing (미구현)</span>
+    </div>
+
+    <div class="dash">
+      <div class="gauge g-ok"><div class="gauge-top"><span class="gauge-name">Draft Orchestration</span><span class="gauge-pct">90%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:90%"></div></div><div class="gauge-note">homepage-drafts.ts 도메인/검증 거의 완성</div></div>
+      <div class="gauge g-ok"><div class="gauge-top"><span class="gauge-name">Harness / Validation</span><span class="gauge-pct">85%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:85%"></div></div><div class="gauge-note">validation · build · manual_required 강함</div></div>
+      <div class="gauge g-ok"><div class="gauge-top"><span class="gauge-name">Draft / Message Flow</span><span class="gauge-pct">85%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:85%"></div></div><div class="gauge-note">생성→수정→patch 흐름 동작</div></div>
+      <div class="gauge g-partial"><div class="gauge-top"><span class="gauge-name">Generator (draft 우선)</span><span class="gauge-pct">72%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:72%"></div></div><div class="gauge-note">draft 우선 부분적, business_summary 단순 조합 잔존</div></div>
+      <div class="gauge g-partial"><div class="gauge-top"><span class="gauge-name">Goose Agent 활용</span><span class="gauge-pct">68%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:68%"></div></div><div class="gauge-note">orchestrator 중심, fallback 잦음, provider 기록 불일치</div></div>
+      <div class="gauge g-miss"><div class="gauge-top"><span class="gauge-name">Customer/Debug 분리</span><span class="gauge-pct">50%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:50%"></div></div><div class="gauge-note">응답에 provider·runLog 혼재</div></div>
+      <div class="gauge g-miss"><div class="gauge-top"><span class="gauge-name">Async Job 구조</span><span class="gauge-pct">45%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:45%"></div></div><div class="gauge-note">jobs/ 큐는 있으나 API가 spawnSync 동기</div></div>
+      <div class="gauge g-miss"><div class="gauge-top"><span class="gauge-name">ChatAction Schema 강제</span><span class="gauge-pct">45%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:45%"></div></div><div class="gauge-note">schema 존재, drafts 경로는 미강제</div></div>
+      <div class="gauge g-miss"><div class="gauge-top"><span class="gauge-name">Status Polling</span><span class="gauge-pct">40%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:40%"></div></div><div class="gauge-note">GET 엔드포인트 있으나 동기라 미사용</div></div>
+      <div class="gauge g-miss"><div class="gauge-top"><span class="gauge-name">상품중심형 지원</span><span class="gauge-pct">35%</span></div><div class="gauge-track"><div class="gauge-fill" style="width:35%"></div></div><div class="gauge-note">UI disabled, company_intro 고정</div></div>
+    </div>
+
+    <div class="overall">
+      <div class="overall-big">77<span>%</span></div>
+      <div class="overall-text">
+        <strong>전체 부합도 · 약 75–80%</strong>
+        <p>설계 철학과 도메인/검증 구조는 높게 부합. 운영형 구조(비동기 job · polling · customer-safe 응답)와 Goose의 실제 생성 기여도가 다음 관문. PoC로는 85%+, 운영 기준으로는 70% 수준.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">Layered Architecture <em>· 실제 파일 + 상태</em></h2></div>
+    <p class="sec-desc">7개 레이어. 컴포넌트 앞 점 색이 구현 상태. 사이드에 실제 repo 경로.</p>
+
+    <div class="arch">
+
+      <div class="layer" style="--layer-color: var(--L-ui)">
+        <div class="layer-meta"><span class="layer-num">LAYER 1</span><span class="layer-name">UI Layer</span><span class="layer-name-en">Customer / Demo</span><span class="layer-status"><span class="pill partial">75% · partial</span></span></div>
+        <div class="layer-body">
+          <div class="comp-row"><span class="comp s-ok">ComposeStep</span><span class="comp s-ok">BuilderStep</span><span class="comp s-ok">DraftPreview</span><span class="comp s-ok">Quick Actions</span><span class="comp s-partial">Generate Button</span><span class="comp s-miss">Job Status Poller</span></div>
+          <p class="layer-note">compose → builder 흐름 동작. ChatPanel/PreviewPanel은 CSS 클래스로만 분리(<span class="inline-code">.builder-chat-panel</span> / <span class="inline-code">.builder-preview-panel</span>). polling 부재로 생성 동안 화면 블로킹. <span class="inline-code" style="color:var(--partial)">/test-builder</span>가 고객 화면처럼 보임.</p>
+        </div>
+        <div class="layer-side"><span class="layer-side-title">Files</span><code>app/test-builder/TestBuilderForm.tsx</code><code>app/globals.css</code></div>
+      </div>
+      <div class="arrow-between"></div>
+
+      <div class="layer" style="--layer-color: var(--L-api)">
+        <div class="layer-meta"><span class="layer-num">LAYER 2</span><span class="layer-name">API Layer</span><span class="layer-name-en">Route Handlers</span><span class="layer-status"><span class="pill partial">70% · partial</span></span></div>
+        <div class="layer-body">
+          <div class="comp-row"><span class="comp s-ok">POST /api/homepage-drafts</span><span class="comp s-ok">POST …/drafts/:id/messages</span><span class="comp s-ok">GET /api/generated-sites</span></div>
+          <div class="comp-row"><span class="comp s-partial">POST …/generation-jobs</span><span class="comp s-partial">GET …/generation-jobs/:id</span><span class="comp s-miss">customer / debug 분리</span></div>
+          <p class="layer-note">POST jobs가 <span class="inline-code" style="color:var(--partial)">spawnSync</span>로 동기 실행, 초기 status도 <span class="inline-code">running</span>(=not queued). GET 엔드포인트는 존재하나 동기라 polling 미사용. 응답에 <span class="inline-code">draft_provider</span>·<span class="inline-code">stdout</span> 혼재.</p>
+        </div>
+        <div class="layer-side"><span class="layer-side-title">Files</span><code>app/api/homepage-generation-jobs/route.ts</code><code>app/api/.../[jobId]/route.ts</code></div>
+      </div>
+      <div class="arrow-between"></div>
+
+      <div class="layer" style="--layer-color: var(--L-draft)">
+        <div class="layer-meta"><span class="layer-num">LAYER 3</span><span class="layer-name">Draft Orchestration</span><span class="layer-name-en">Domain Logic</span><span class="layer-status"><span class="pill ok">90% · done</span></span></div>
+        <div class="layer-body">
+          <div class="comp-row"><span class="comp s-ok">HomepageDraft</span><span class="comp s-ok">ConversationSession</span><span class="comp s-ok">DraftPatch</span></div>
+          <div class="comp-row"><span class="comp s-ok">extractAllowedDraftPatch</span><span class="comp s-ok">sanitizeDraftPatch</span><span class="comp s-ok">validateDraftState</span><span class="comp s-ok">confirmDraft</span></div>
+          <p class="layer-note">message → patch → draft → validation 완비. 금칙어, 필수 섹션 숨김 금지, 데이터 없는 history/portfolio/product 노출 금지까지 검증. 가장 견고한 레이어.</p>
+        </div>
+        <div class="layer-side"><span class="layer-side-title">Files</span><code>lib/homepage-drafts.ts</code><code>lib/chat-homepage-sessions.ts</code><code style="color:var(--partial)">⚠ 중복 시스템</code></div>
+      </div>
+      <div class="arrow-between"></div>
+
+      <div class="layer" style="--layer-color: var(--L-goose)">
+        <div class="layer-meta"><span class="layer-num">LAYER 4</span><span class="layer-name">Goose Agent</span><span class="layer-name-en">LLM Orchestration</span><span class="layer-status"><span class="pill partial">68% · partial</span></span></div>
+        <div class="layer-body">
+          <div class="comp-row"><span class="comp s-ok">Draft Agent (recipe)</span><span class="comp s-ok">Edit Agent (recipe)</span><span class="comp s-miss">Repair Agent</span></div>
+          <div class="comp-row"><span class="comp s-partial">ChatAction 응답</span><span class="comp s-partial">goose-draft-report</span><span class="comp s-miss">provider/model 기록 일치</span></div>
+          <p class="layer-note">recipe로 붙어 있으나 실패 시 deterministic fallback 빈번. e2e는 <span class="inline-code">google/gemini-2.5-flash</span>, generation-result는 <span class="inline-code" style="color:var(--miss)">local_placeholder</span> → 실제 제작 증거 약함. Goose가 아직 orchestrator에 가까움.</p>
+        </div>
+        <div class="layer-side"><span class="layer-side-title">Files</span><code>recipes/homepage-draft.recipe.yaml</code><code>scripts/run-goose-homepage-draft-recipe.sh</code></div>
+      </div>
+      <div class="arrow-between"></div>
+
+      <div class="layer" style="--layer-color: var(--L-gen)">
+        <div class="layer-meta"><span class="layer-num">LAYER 5</span><span class="layer-name">Generator</span><span class="layer-name-en">Deterministic</span><span class="layer-status"><span class="pill partial">72% · partial</span></span></div>
+        <div class="layer-body">
+          <div class="comp-row"><span class="comp s-ok">generate-static-site.mjs</span><span class="comp s-ok">result_style_v1</span><span class="comp s-ok">asset fallback</span></div>
+          <div class="comp-row"><span class="comp s-partial">draft → request → fallback</span><span class="comp s-miss">자연어 business_summary</span></div>
+          <p class="layer-note"><span class="inline-code">draftString() || request.x</span> 우선순위는 일부 필드만 적용. <span class="inline-code" style="color:var(--miss)">`${industry} 분야에서 ${business_type}을 수행합니다`</span> 단순 조합 잔존 → 어색한 문구 발생.</p>
+        </div>
+        <div class="layer-side"><span class="layer-side-title">Files</span><code>scripts/generate-static-site.mjs</code><code>templates/*/template.config.json</code></div>
+      </div>
+      <div class="arrow-between"></div>
+
+      <div class="layer" style="--layer-color: var(--L-harness)">
+        <div class="layer-meta"><span class="layer-num">LAYER 6</span><span class="layer-name">Harness</span><span class="layer-name-en">Validation / Build</span><span class="layer-status"><span class="pill ok">85% · done</span></span></div>
+        <div class="layer-body">
+          <div class="comp-row"><span class="comp s-ok">validate-request.mjs</span><span class="comp s-ok">validate-generated-site.mjs</span><span class="comp s-ok">fake claim check</span><span class="comp s-ok">has_required_generated_files</span><span class="comp s-ok">npm run build</span></div>
+          <p class="layer-note">통과 → <span style="color:var(--ok)">generated</span>, 실패 → 재시도 후 <span style="color:var(--partial)">manual_required</span>. 콘텐츠 품질 검증은 약함. repair loop 없음.</p>
+        </div>
+        <div class="layer-side"><span class="layer-side-title">Files</span><code>scripts/run-homepage-builder.sh</code><code>harness/validators/*.mjs</code></div>
+      </div>
+      <div class="arrow-between"></div>
+
+      <div class="layer" style="--layer-color: var(--L-site)">
+        <div class="layer-meta"><span class="layer-num">LAYER 7</span><span class="layer-name">Generated Site</span><span class="layer-name-en">Output</span><span class="layer-status"><span class="pill ok">85% · done</span></span></div>
+        <div class="layer-body">
+          <div class="comp-row"><span class="comp s-ok">generated-sites/{companyId}/</span><span class="comp s-ok">/homepage/:companyId</span></div>
+          <p class="layer-note">content/assets/metadata/page.tsx/index.html/styles.css + report. spacing/labels polish는 남음.</p>
+        </div>
+        <div class="layer-side"><span class="layer-side-title">Files</span><code>app/homepage/[companyId]/page.tsx</code><code>lib/generated-sites.ts</code></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Flow 3 <em>· 최종 생성 (현재 vs 목표)</em></h2></div>
+    <p class="sec-desc">가장 큰 gap. 비동기 인프라(<span class="inline-code">jobs/{pending,processing,completed,failed}</span> + <span class="inline-code">run-pending-homepage-jobs.mjs</span>)는 이미 존재하지만 웹 API가 거기에 연결돼 있지 않다. "새로 만들기"가 아니라 "배선" 문제.</p>
+
+    <div class="flow-compare">
+      <div class="flow-col current">
+        <div class="flow-col-head"><span class="pill partial">CURRENT</span><h3>동기 실행</h3></div>
+        <div class="flow-chain">
+          <div class="chain-node">UI → POST /generation-jobs</div>
+          <div class="chain-arr">↓</div>
+          <div class="chain-node hot">spawnSync(run-homepage-builder.sh)</div>
+          <div class="chain-arr">↓ <span style="color:var(--partial)">(서버 최대 6분 blocking)</span></div>
+          <div class="chain-node hot">generator + validation + build</div>
+          <div class="chain-arr">↓</div>
+          <div class="chain-node">완료 후에야 응답 (status=generated)</div>
+        </div>
+        <div class="flow-verdict bad">Next.js API 프로세스가 build 끝까지 대기. status가 <span class="inline-code">running</span>에서 시작 → GET polling이 사실상 무의미. 운영 부적합.</div>
+      </div>
+
+      <div class="flow-col target">
+        <div class="flow-col-head"><span class="pill ok">TARGET</span><h3>비동기 Job</h3></div>
+        <div class="flow-chain">
+          <div class="chain-node">UI → POST /generation-jobs</div>
+          <div class="chain-arr">↓</div>
+          <div class="chain-node cool">jobs/pending/{job_id}.json 저장</div>
+          <div class="chain-arr">↓ <span style="color:var(--ok)">(즉시 반환)</span></div>
+          <div class="chain-node cool">{ job_id, status: "queued" }</div>
+          <div class="chain-arr">↓ worker (이미 존재)</div>
+          <div class="chain-node">run-pending-homepage-jobs.mjs → completed/failed</div>
+          <div class="chain-arr">↓ UI polling</div>
+          <div class="chain-node cool">GET /generation-jobs/:id → status</div>
+        </div>
+        <div class="flow-verdict good">큐 디렉토리와 batch worker는 이미 구현됨. API의 spawnSync를 enqueue로 바꾸고 worker를 상시 실행하면 Flow 3·4 동시 완성.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Gap <em>Matrix</em></h2></div>
+    <div class="matrix">
+      <div class="mrow header"><div>항목</div><div>목표</div><div>현재</div><div style="text-align:right">부합도</div></div>
+      <div class="mrow"><span class="m-item">Draft domain</span><span class="m-target">Draft/session/patch/validation</span><span class="m-current">잘 구현됨</span><span class="m-pct ok">90%</span></div>
+      <div class="mrow"><span class="m-item">Draft / Message API</span><span class="m-target">생성 + 수정 patch</span><span class="m-current">구현됨</span><span class="m-pct ok">85%</span></div>
+      <div class="mrow"><span class="m-item">Harness</span><span class="m-target">validation / build</span><span class="m-current">좋음, repair 없음</span><span class="m-pct ok">85%</span></div>
+      <div class="mrow"><span class="m-item">Generated Site</span><span class="m-target">정적 산출 + 서빙</span><span class="m-current">구현됨</span><span class="m-pct ok">85%</span></div>
+      <div class="mrow"><span class="m-item">Generator</span><span class="m-target">fixed template</span><span class="m-current">구현됨</span><span class="m-pct ok">80%</span></div>
+      <div class="mrow"><span class="m-item">Chat UI</span><span class="m-target">채팅 + preview + chips</span><span class="m-current">초안/수정 UI 있음</span><span class="m-pct partial">75%</span></div>
+      <div class="mrow"><span class="m-item">Goose Draft/Edit</span><span class="m-target">draft 생성/수정</span><span class="m-current">있음, fallback 잦음</span><span class="m-pct partial">70%</span></div>
+      <div class="mrow"><span class="m-item">Draft 우선 generator</span><span class="m-target">draft → request → fallback</span><span class="m-current">일부 적용</span><span class="m-pct partial">60%</span></div>
+      <div class="mrow"><span class="m-item">Customer/debug 분리</span><span class="m-target">고객용 응답 분리</span><span class="m-current">혼재</span><span class="m-pct miss">50%</span></div>
+      <div class="mrow"><span class="m-item">Async Job</span><span class="m-target">queued + worker</span><span class="m-current">동기 실행</span><span class="m-pct miss">45%</span></div>
+      <div class="mrow"><span class="m-item">ChatAction schema</span><span class="m-target">action 형태 강제</span><span class="m-current">schema만 존재</span><span class="m-pct miss">45%</span></div>
+      <div class="mrow"><span class="m-item">Status polling</span><span class="m-target">GET job status</span><span class="m-current">엔드포인트만 존재</span><span class="m-pct miss">40%</span></div>
+      <div class="mrow"><span class="m-item">상품중심형</span><span class="m-target">product 지원</span><span class="m-current">disabled 고정</span><span class="m-pct miss">35%</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Architectural <em>Insights</em></h2></div>
+    <p class="sec-desc">평가에서 드러나지 않은 두 가지 구조적 발견.</p>
+
+    <div class="insight">
+      <div class="insight-card warn">
+        <h4><span class="ic">⚠</span> 1. 이중 draft 시스템 (중복)</h4>
+        <p>두 개의 평행한 chat/draft 구현이 공존한다. UI는 <span class="inline-code">homepage-drafts</span> 쪽만 쓰고, ChatAction을 가진 <span class="inline-code">chat-homepage-sessions</span> 쪽은 사실상 연결돼 있지 않다.</p>
+        <p>ChatAction schema 강제(45%)가 약한 진짜 이유 — schema와 로직은 <span class="inline-code">chat-homepage-sessions.ts</span>에 있는데, 실제 사용 경로는 ChatAction을 안 거치는 <span class="inline-code">homepage-drafts.ts</span>다.</p>
+        <div class="files"><b>사용 중:</b> lib/homepage-drafts.ts → /api/homepage-drafts/*<br/><b>미연결:</b> lib/chat-homepage-sessions.ts → /api/chat-homepage-sessions/*<br/><b>권장:</b> 하나로 통합 후 ChatAction을 단일 경로에 강제</div>
+      </div>
+
+      <div class="insight-card warn">
+        <h4><span class="ic">⚠</span> 2. 비동기 인프라가 끊겨 있음</h4>
+        <p>완전한 job queue가 이미 있다 — <span class="inline-code">jobs/{pending,processing,completed,failed}</span>, batch worker, per-job report, batch-run-report까지. 하지만 웹 <span class="inline-code">POST /api/homepage-generation-jobs</span>는 이 큐를 무시하고 직접 builder를 spawnSync한다.</p>
+        <p>즉 Async Job(45%)·Polling(40%)의 핵심 부품은 이미 작성돼 있고, <strong>배선만</strong> 하면 된다.</p>
+        <div class="files"><b>존재:</b> scripts/run-pending-homepage-jobs.mjs (worker)<br/><b>존재:</b> scripts/create-homepage-job.mjs (enqueue helper)<br/><b>끊김:</b> API → jobs/pending 으로 쓰지 않음</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Next <em>Priorities</em></h2></div>
+    <p class="sec-desc">부합도를 가장 크게 올릴 3개. 모두 신규 빌드보다 기존 자산 연결/정리에 가깝다.</p>
+
+    <div class="prios">
+      <div class="prio">
+        <span class="prio-rank">1</span>
+        <div class="prio-body">
+          <h3>Generation Job 비동기화 <span class="pill miss">45% → 80%+</span></h3>
+          <p>POST에서 spawnSync 제거 → <span class="inline-code">jobs/pending</span>에 저장 후 즉시 <span class="inline-code">queued</span> 반환. worker는 기존 <span class="inline-code">run-pending-homepage-jobs.mjs</span> 상시 실행. Flow 3·4 동시 해결.</p>
+          <div class="prio-code"><span class="c">// app/api/homepage-generation-jobs/route.ts</span>
+<span class="del">- const result = spawnSync("bash", ["scripts/run-homepage-builder.sh", requestPath])</span>
+<span class="del">- status: "running"</span>
+<span class="add">+ fs.writeFileSync(`jobs/pending/${jobId}.json`, JSON.stringify(requestBody))</span>
+<span class="add">+ status: "queued"   // 즉시 반환, build 대기 없음</span></div>
+        </div>
+      </div>
+
+      <div class="prio">
+        <span class="prio-rank">2</span>
+        <div class="prio-body">
+          <h3>단일 chat 경로 + ChatAction 강제 <span class="pill miss">45% → 75%+</span></h3>
+          <p>이중 시스템을 하나로 통합. Goose/deterministic 응답을 모두 <span class="inline-code">ChatAction</span>으로 정규화하고 schema로 검증한 뒤에만 적용.</p>
+          <div class="prio-code"><span class="c">// 허용 action만 통과</span>
+<span class="k">type</span> ChatAction =
+  | ask_missing_info | patch_draft
+  | toggle_section   | change_layout
+  | run_generation
+<span class="add">+ validateChatAction(action)  // schemas/chat-action.schema.json</span></div>
+        </div>
+      </div>
+
+      <div class="prio">
+        <span class="prio-rank">3</span>
+        <div class="prio-body">
+          <h3>customer / debug 응답 분리 <span class="pill miss">50% → 80%+</span></h3>
+          <p>고객용엔 <span class="inline-code">status · homepage_url · preview_available</span>만. provider·model·runLog·validation_report는 debug 블록으로.</p>
+          <div class="prio-code">{
+  <span class="k">"ok"</span>: true,
+  <span class="k">"customer"</span>: { status, homepage_url, preview_available },
+  <span class="k">"debug"</span>: { provider, validation_result, build_result, agent_run_report_path }
+}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">Storage <em>· 실제 경로</em></h2></div>
+    <p class="sec-desc"><span style="color:var(--ok)">초록</span>=API가 쓰는 경로, <span style="color:var(--partial)">노랑</span>=존재하나 API 미연결.</p>
+    <div class="storage">
+<span style="color:var(--L-draft)">harness/tmp/homepage-drafts/{draft_id}/</span>
+  ├─ content.draft.json
+  └─ conversation-session.json
+
+<span style="color:var(--text-muted)">harness/tmp/chat-sessions/        </span><span style="color:var(--partial)"># ⚠ 미연결 (이중 시스템)</span>
+<span style="color:var(--text-muted)">harness/tmp/chat-session-requests/</span><span style="color:var(--partial)"># ⚠ 미연결</span>
+
+<span style="color:var(--L-api)">harness/tmp/homepage-generation-jobs/{job_id}.json</span>      <span style="color:var(--ok)"># GET이 읽음</span>
+<span style="color:var(--L-api)">harness/tmp/homepage-generation-requests/{job_id}.json</span>
+
+<span style="color:var(--L-gen)">jobs/</span>
+  ├─ pending/     <span style="color:var(--partial)"># ⚠ batch worker만 사용, 웹 API 미연결 ← 1순위</span>
+  ├─ processing/
+  ├─ completed/   <span style="color:var(--ok)"># 성공</span>
+  └─ failed/      <span style="color:var(--miss)"># 실패</span>
+
+<span style="color:var(--L-site)">generated-sites/{company_id}/</span>
+  ├─ content.json · assets.json · metadata.json
+  ├─ page.tsx · index.html · styles.css
+  ├─ generation-result.json · validation-report.json
+  └─ agent-run-report.json · agent-run-report.md
+    </div>
+  </section>
+
+  <footer>
+    <span>Architecture &amp; Status <span class="dot">·</span> Chat Homepage Generation</span>
+    <span>전체 부합도 ~77% · 다음 관문: async job · ChatAction · customer-safe</span>
+  </footer>
+
+</div>
+</body>
+</html>

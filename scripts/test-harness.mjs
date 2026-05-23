@@ -2,8 +2,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import {
+  enqueueHomepageGenerationJob,
+  synthesizeHomepageGenerationJobStatus,
+} from "./lib/homepage-job-queue.mjs";
 
 const tests = [];
+const asyncQueueState = {};
 
 runTest("valid request schema: company intro", () => {
   run("node", ["scripts/validate-request.mjs", "requests/sample-company-intro.json"]);
@@ -438,6 +443,165 @@ runTest("job creator writes valid pending request and prevents overwrite", () =>
   ]);
 });
 
+runTest("async generation enqueue returns queued without building", () => {
+  const jobsRoot = path.join("harness", "tmp", "api-generation-jobs");
+  const companyId = "COMPANY_ASYNC_QUEUED";
+  const request = buildAsyncRequest("REQ_ASYNC_QUEUED", companyId);
+  const sitePath = path.join(process.cwd(), "generated-sites", companyId);
+
+  fs.rmSync(path.join(process.cwd(), jobsRoot), { force: true, recursive: true });
+  fs.rmSync(sitePath, { force: true, recursive: true });
+
+  const startedAt = Date.now();
+  const queued = enqueueHomepageGenerationJob({
+    requestBody: request,
+    jobsRoot,
+    jobId: "JOB_ASYNC_QUEUED",
+    now: "2026-05-23T00:00:00.000Z",
+  });
+  const elapsedMs = Date.now() - startedAt;
+  const queuedPath = path.join(process.cwd(), jobsRoot, "pending", "JOB_ASYNC_QUEUED.json");
+  const queuedRequest = readJson(path.join(jobsRoot, "pending", "JOB_ASYNC_QUEUED.json"));
+
+  assert(queued.status === "queued", "enqueue must return queued status");
+  assert(queued.customer.status === "queued", "customer status must be queued");
+  assert(queued.customer.preview_available === false, "queued job must not expose preview");
+  assert(!("stdout" in queued), "queued response must not include top-level stdout");
+  assert(!("stderr" in queued), "queued response must not include top-level stderr");
+  assert(fs.existsSync(queuedPath), "enqueue must write pending job request");
+  assert(queuedRequest.company_id === companyId, "queued request must preserve company_id");
+  assert(!("job_id" in queuedRequest), "queued request must not include job_id");
+  assert(!("status" in queuedRequest), "queued request must not include status");
+  assert(!("generation_mode" in queuedRequest), "queued request must not include generation_mode");
+  assert(!fs.existsSync(sitePath), "enqueue must not create generated site directory");
+  assert(elapsedMs < 3000, "enqueue must not wait for build");
+
+  asyncQueueState.jobsRoot = jobsRoot;
+  asyncQueueState.completedJobId = "JOB_ASYNC_QUEUED";
+  asyncQueueState.completedCompanyId = companyId;
+});
+
+runTest("async status helper synthesizes queued and running states", () => {
+  const jobsRoot = path.join("harness", "tmp", "api-generation-status");
+  const queuedRequest = buildAsyncRequest("REQ_ASYNC_STATUS_QUEUED", "COMPANY_ASYNC_STATUS_QUEUED");
+  const runningRequest = buildAsyncRequest("REQ_ASYNC_STATUS_RUNNING", "COMPANY_ASYNC_STATUS_RUNNING");
+
+  fs.rmSync(path.join(process.cwd(), jobsRoot), { force: true, recursive: true });
+  for (const dir of ["pending", "processing", "completed", "failed"]) {
+    fs.mkdirSync(path.join(process.cwd(), jobsRoot, dir), { recursive: true });
+  }
+  fs.writeFileSync(
+    path.join(process.cwd(), jobsRoot, "pending", "JOB_ASYNC_STATUS_QUEUED.json"),
+    JSON.stringify(queuedRequest, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(process.cwd(), jobsRoot, "processing", "JOB_ASYNC_STATUS_RUNNING.json"),
+    JSON.stringify(runningRequest, null, 2),
+  );
+
+  const queued = synthesizeHomepageGenerationJobStatus({
+    jobsRoot,
+    jobId: "JOB_ASYNC_STATUS_QUEUED",
+  });
+  const running = synthesizeHomepageGenerationJobStatus({
+    jobsRoot,
+    jobId: "JOB_ASYNC_STATUS_RUNNING",
+  });
+
+  assert(queued.status === "queued", "pending queue state must synthesize queued status");
+  assert(queued.debug.queue_state === "pending", "queued debug state must be pending");
+  assert(queued.customer.preview_available === false, "queued status must not expose preview");
+  assert(running.status === "running", "processing queue state must synthesize running status");
+  assert(running.debug.queue_state === "processing", "running debug state must be processing");
+  assert(running.customer.preview_available === false, "running status must not expose preview");
+});
+
+runTest("worker moves async queued job to completed and status helper exposes generated telemetry", () => {
+  const jobsRoot = asyncQueueState.jobsRoot;
+  const jobId = asyncQueueState.completedJobId;
+  const companyId = asyncQueueState.completedCompanyId;
+
+  assert(jobsRoot && jobId && companyId, "async queued state must be initialized");
+  run("npm", ["run", "jobs:run", "--", jobsRoot], {
+    env: {
+      ...process.env,
+      GOOSE_MODE: "local",
+    },
+  });
+
+  assert(
+    !fs.existsSync(path.join(process.cwd(), jobsRoot, "pending", `${jobId}.json`)),
+    "worker must remove pending job",
+  );
+  assert(
+    fs.existsSync(path.join(process.cwd(), jobsRoot, "completed", `${jobId}.json`)),
+    "worker must move successful job to completed",
+  );
+  assert(
+    fs.existsSync(path.join(process.cwd(), jobsRoot, "completed", `${jobId}.json.job-report.json`)),
+    "worker must write completed job report",
+  );
+  assertResult(`generated-sites/${companyId}/generation-result.json`, {
+    status: "generated",
+    buildPassed: true,
+    validationPassed: true,
+  });
+
+  const status = synthesizeHomepageGenerationJobStatus({ jobsRoot, jobId });
+  assert(status.status === "generated", "completed queue job must synthesize generated status");
+  assert(
+    status.customer.homepage_url === `/homepage/${companyId}`,
+    "generated status must expose homepage url",
+  );
+  assert(status.customer.preview_available === true, "generated status must expose preview");
+  assert(status.debug.validation_result.passed === true, "generated debug must include validation result");
+  assert(status.debug.build_result.passed === true, "generated debug must include build result");
+  assert(
+    status.debug.agent_run_report_path === `generated-sites/${companyId}/agent-run-report.json`,
+    "generated debug must expose agent run report path",
+  );
+});
+
+runTest("async status helper synthesizes failed state from failed queue", () => {
+  const jobsRoot = path.join("harness", "tmp", "api-generation-failed-jobs");
+  const jobId = "JOB_ASYNC_FAILED";
+
+  fs.rmSync(path.join(process.cwd(), jobsRoot), { force: true, recursive: true });
+  for (const dir of ["pending", "processing", "completed", "failed"]) {
+    fs.mkdirSync(path.join(process.cwd(), jobsRoot, dir), { recursive: true });
+  }
+  fs.copyFileSync(
+    path.join(process.cwd(), "harness", "fixtures", "invalid-homepage-type.json"),
+    path.join(process.cwd(), jobsRoot, "pending", `${jobId}.json`),
+  );
+
+  run("npm", ["run", "jobs:run", "--", jobsRoot], {
+    expectFailure: true,
+    env: {
+      ...process.env,
+      GOOSE_MODE: "local",
+    },
+  });
+
+  assert(
+    fs.existsSync(path.join(process.cwd(), jobsRoot, "failed", `${jobId}.json`)),
+    "worker must move invalid job to failed",
+  );
+  assert(
+    fs.existsSync(path.join(process.cwd(), jobsRoot, "failed", `${jobId}.json.job-report.json`)),
+    "worker must write failed job report",
+  );
+
+  const status = synthesizeHomepageGenerationJobStatus({ jobsRoot, jobId });
+  assert(status.status === "failed", "failed queue job must synthesize failed status");
+  assert(status.customer.preview_available === false, "failed status must not expose preview");
+  assert(status.debug.queue_state === "failed", "failed debug state must be failed");
+  assert(
+    status.debug.job_report_path === `${jobsRoot}/failed/${jobId}.json.job-report.json`,
+    "failed debug must expose job report path",
+  );
+});
+
 runTest("goose required without provider records agent failure without stale validation", () => {
   if (!hasGooseCli()) {
     console.log("skip - goose CLI is not installed");
@@ -597,6 +761,16 @@ function hasGooseCli() {
   });
 
   return result.status === 0;
+}
+
+function buildAsyncRequest(requestId, companyId) {
+  const request = readJson("requests/sample-company-intro.json");
+  return {
+    ...request,
+    request_id: requestId,
+    company_id: companyId,
+    company_name: "주식회사 비동기테스트",
+  };
 }
 
 function assertResult(resultPath, expected) {
