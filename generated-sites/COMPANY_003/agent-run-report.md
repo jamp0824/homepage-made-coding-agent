@@ -10,7 +10,7 @@
 - template_id: product_basic
 - final_status: generated
 - retry_count: 1
-- completed_at: 2026-05-21T07:15:04.512Z
+- completed_at: 2026-05-23T16:15:29.404Z
 
 ## Validation
 

@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import {
+  normalizeBlockOverrides,
+  normalizeDesignTokens,
+  normalizeSectionOrder,
+} from "../../frontend/lib/homepage-controls.mjs";
 
 const requiredFiles = [
   "content.json",
@@ -330,9 +335,12 @@ const generatedText = collectStrings({ content, assets, metadata, agentRunReport
 }
 
 if (content && pageSource) {
-  for (const sectionName of content.sections || []) {
-    if (!pageSource.includes(`data-section="${sectionName}"`)) {
-      errors.push(`page.tsx missing data-section for content section: ${sectionName}`);
+  const usesSharedHomepageView = pageSource.includes("HomepageView") && pageSource.includes("contentToViewModel");
+  if (!usesSharedHomepageView) {
+    for (const sectionName of content.sections || []) {
+      if (!pageSource.includes(`data-section="${sectionName}"`)) {
+        errors.push(`page.tsx missing data-section for content section: ${sectionName}`);
+      }
     }
   }
 }
@@ -481,6 +489,19 @@ function validateGeneratedSectionControls({ content, errors }) {
       errors.push(`required section cannot be hidden: ${item.id}`);
     }
   }
+
+  const normalizedTokens = normalizeDesignTokens(content.design_tokens);
+  if (content.design_tokens && JSON.stringify(normalizedTokens) !== JSON.stringify(content.design_tokens)) {
+    errors.push("content.json design_tokens contains unsupported values");
+  }
+  const normalizedOrder = normalizeSectionOrder(content.section_order, content.homepage_type);
+  if (content.section_order && JSON.stringify(normalizedOrder) !== JSON.stringify(content.section_order)) {
+    errors.push("content.json section_order contains unsupported or duplicate sections");
+  }
+  const normalizedOverrides = normalizeBlockOverrides(content.block_overrides);
+  if (content.block_overrides && JSON.stringify(normalizedOverrides) !== JSON.stringify(content.block_overrides)) {
+    errors.push("content.json block_overrides contains unsupported values");
+  }
 }
 
 function validateRequestBoundCopy({ content, request, errors }) {
@@ -525,6 +546,15 @@ function validateRequestBoundSectionControls({ content, request, errors }) {
   }
   if (request.content_source && content.content_source !== request.content_source) {
     errors.push("content_source must match request.content_source exactly");
+  }
+  if (request.design_tokens && JSON.stringify(content.design_tokens || {}) !== JSON.stringify(request.design_tokens)) {
+    errors.push("design_tokens must match request.design_tokens exactly");
+  }
+  if (request.section_order && JSON.stringify(content.section_order || []) !== JSON.stringify(request.section_order)) {
+    errors.push("section_order must match request.section_order exactly");
+  }
+  if (request.block_overrides && JSON.stringify(content.block_overrides || {}) !== JSON.stringify(request.block_overrides)) {
+    errors.push("block_overrides must match request.block_overrides exactly");
   }
 
   const requestLayout =

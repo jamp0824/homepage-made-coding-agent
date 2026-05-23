@@ -53,6 +53,13 @@ export type GeneratedContent = {
   section_visibility?: Record<string, boolean>;
   section_layout?: Record<string, string>;
   content_density?: "compact" | "standard" | "rich";
+  design_tokens?: {
+    primary?: string;
+    accent?: string;
+    radius?: "none" | "sm" | "md" | "lg";
+  };
+  section_order?: string[];
+  block_overrides?: Record<string, { emphasis?: "default" | "strong" }>;
   content_source?: string;
   draft_id?: string;
   confirmed_at?: string;

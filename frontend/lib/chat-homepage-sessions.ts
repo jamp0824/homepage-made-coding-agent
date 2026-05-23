@@ -1,6 +1,20 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  allowedLayouts,
+  allowedVisibilitySections,
+  contentDensities,
+  defaultSectionLayout,
+  forbiddenPhrases,
+  normalizeBlockOverrides,
+  normalizeDesignTokens,
+  normalizeSectionOrder,
+  requiredVisibleSections,
+  type BlockOverride,
+  type DesignTokens,
+  type SectionId,
+} from "./homepage-controls.mjs";
 
 export type ChatSessionStatus =
   | "empty"
@@ -54,6 +68,9 @@ export type ContentDraft = {
   section_visibility?: Record<string, boolean>;
   section_layout?: Record<string, string>;
   content_density?: ContentDensity;
+  design_tokens?: DesignTokens;
+  section_order?: SectionId[];
+  block_overrides?: Partial<Record<SectionId, BlockOverride>>;
   hero_image_theme?: string;
   hero_image_keywords?: string[];
   cta_text?: string;
@@ -103,40 +120,9 @@ const requiredRequestFields = [
   "business_type",
   "main_business_description",
 ] as const;
-const forbiddenPhrases = [
-  "업계 1위",
-  "국내 최고",
-  "압도적",
-  "인증받은",
-  "수상 경력",
-  "다수의 고객사",
-  "10년 이상",
-  "풍부한 연혁",
-  "매출",
-  "납품 실적",
-  "특허",
-];
-const requiredVisibleSections = new Set(["company_intro", "core_strengths", "contact_cta"]);
-const allowedVisibilitySections = new Set([
-  "company_summary",
-  "contact_info",
-  "company_intro",
-  "core_strengths",
-  "history",
-  "portfolio",
-  "featured_products",
-  "product_area",
-  "product_registration_cta",
-  "contact_cta",
-]);
-const allowedLayouts: Record<string, Set<string>> = {
-  core_strengths: new Set(["list", "grid_2"]),
-  history: new Set(["timeline", "compact"]),
-  portfolio: new Set(["list", "grid_2"]),
-  featured_products: new Set(["grid_2", "grid_3"]),
-  product_area: new Set(["grid_2", "grid_3"]),
-};
-const allowedDensities = new Set<ContentDensity>(["compact", "standard", "rich"]);
+const requiredVisibleSectionSet = new Set<string>(requiredVisibleSections);
+const allowedVisibilitySectionSet = new Set<string>(allowedVisibilitySections);
+const allowedDensitySet = new Set<ContentDensity>(contentDensities);
 
 export function createChatHomepageSession(payload: unknown = {}) {
   const now = new Date().toISOString();
@@ -469,18 +455,7 @@ function deriveContentDraft(
       ? currentDraft.core_strengths
       : deriveCoreStrengths(request, description);
   const tags = normalizeStringArray(currentDraft.tags).length > 0 ? currentDraft.tags : buildTags(request);
-  const defaultLayout: Record<string, string> =
-    request.homepage_type === "product"
-      ? {
-          core_strengths: "list",
-          product_area: "grid_2",
-        }
-      : {
-          core_strengths: "list",
-          history: "timeline",
-          portfolio: "list",
-          featured_products: "grid_2",
-        };
+  const defaultLayout: Record<string, string> = { ...defaultSectionLayout[request.homepage_type || "company_intro"] };
 
   return {
     hero_title: heroTitle,
@@ -504,6 +479,9 @@ function deriveContentDraft(
       ...(currentDraft.section_layout || {}),
     },
     content_density: currentDraft.content_density || "standard",
+    design_tokens: currentDraft.design_tokens,
+    section_order: currentDraft.section_order,
+    block_overrides: currentDraft.block_overrides,
     hero_image_theme: currentDraft.hero_image_theme || inferHeroImageTheme(request),
     hero_image_keywords:
       currentDraft.hero_image_keywords && currentDraft.hero_image_keywords.length > 0
@@ -590,7 +568,7 @@ function buildVisibilityPatch(session: ChatHomepageSession, message: string, war
   const section = inferSectionFromMessage(message);
   const patch: Record<string, boolean> = {};
   if (!section || (!hide && !show)) return patch;
-  if (requiredVisibleSections.has(section) && hide) {
+  if (requiredVisibleSectionSet.has(section) && hide) {
     warnings.push(`${section}_cannot_be_hidden`);
     return patch;
   }
@@ -625,18 +603,30 @@ function validateContentDraft(draft: ContentDraft, request: ChatHomepageRequest)
   const visibility = draft.section_visibility || {};
   const layout = draft.section_layout || {};
   for (const [section, visible] of Object.entries(visibility)) {
-    if (!allowedVisibilitySections.has(section)) warnings.push(`unsupported_section_visibility:${section}`);
-    if (requiredVisibleSections.has(section) && visible === false) warnings.push(`${section}_cannot_be_hidden`);
-    if (visible === true && !sectionHasData(section, request) && !requiredVisibleSections.has(section)) {
+    if (!allowedVisibilitySectionSet.has(section)) warnings.push(`unsupported_section_visibility:${section}`);
+    if (requiredVisibleSectionSet.has(section) && visible === false) warnings.push(`${section}_cannot_be_hidden`);
+    if (visible === true && !sectionHasData(section, request) && !requiredVisibleSectionSet.has(section)) {
       warnings.push(`${section}_has_no_data`);
     }
   }
   for (const [section, value] of Object.entries(layout)) {
     const allowed = allowedLayouts[section];
-    if (!allowed || !allowed.has(value)) warnings.push(`unsupported_section_layout:${section}.${value}`);
+    if (!allowed || !allowed.includes(value)) warnings.push(`unsupported_section_layout:${section}.${value}`);
   }
-  if (draft.content_density && !allowedDensities.has(draft.content_density)) {
+  if (draft.content_density && !allowedDensitySet.has(draft.content_density)) {
     warnings.push(`unsupported_content_density:${draft.content_density}`);
+  }
+  const normalizedTokens = normalizeDesignTokens(draft.design_tokens);
+  if (draft.design_tokens && JSON.stringify(normalizedTokens) !== JSON.stringify(draft.design_tokens)) {
+    warnings.push("unsupported_design_tokens");
+  }
+  const normalizedOrder = normalizeSectionOrder(draft.section_order, request.homepage_type || "company_intro");
+  if (draft.section_order && JSON.stringify(normalizedOrder) !== JSON.stringify(draft.section_order)) {
+    warnings.push("unsupported_section_order");
+  }
+  const normalizedOverrides = normalizeBlockOverrides(draft.block_overrides);
+  if (draft.block_overrides && JSON.stringify(normalizedOverrides) !== JSON.stringify(draft.block_overrides)) {
+    warnings.push("unsupported_block_overrides");
   }
   return { warnings };
 }
@@ -719,6 +709,9 @@ function buildConfirmedRequest(session: ChatHomepageSession) {
     section_visibility: draft.section_visibility,
     section_layout: draft.section_layout,
     content_density: draft.content_density || "standard",
+    design_tokens: draft.design_tokens,
+    section_order: draft.section_order,
+    block_overrides: draft.block_overrides,
     content_source: "ai_suggested_user_confirmed",
     content_draft: contentDraft,
     preferred_style: "clean",
@@ -755,6 +748,9 @@ function normalizeDraftForHomepageType(draft: ContentDraft, homepageType: Homepa
         ]);
   return {
     ...draft,
+    design_tokens: normalizeDesignTokens(draft.design_tokens),
+    section_order: normalizeSectionOrder(draft.section_order, homepageType),
+    block_overrides: normalizeBlockOverrides(draft.block_overrides),
     section_layout: Object.fromEntries(
       Object.entries(draft.section_layout || {}).filter(([section]) => allowedLayoutSections.has(section)),
     ),
@@ -866,6 +862,15 @@ function mergeContentDraft(base: ContentDraft, patch: ContentDraft) {
     section_layout: {
       ...(base.section_layout || {}),
       ...(patch.section_layout || {}),
+    },
+    design_tokens: {
+      ...(base.design_tokens || {}),
+      ...(patch.design_tokens || {}),
+    },
+    section_order: patch.section_order || base.section_order,
+    block_overrides: {
+      ...(base.block_overrides || {}),
+      ...(patch.block_overrides || {}),
     },
   }) as ContentDraft;
 }
