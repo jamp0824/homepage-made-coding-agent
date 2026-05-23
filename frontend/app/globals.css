@@ -2265,6 +2265,29 @@ input[readonly] {
   overflow-wrap: anywhere;
 }
 
+.builder-result-failed {
+  color: #8a2f20;
+  background: #fff1ed;
+  border-color: #f3b4a5;
+}
+
+.builder-debug-hint {
+  flex-shrink: 0;
+  margin: 8px 18px 0;
+  padding: 10px 14px;
+  color: #526075;
+  background: #ffffff;
+  border: 1px dashed #cfd7e6;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.builder-debug-hint code {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
 .builder-panel-body {
   flex: 1 1 auto;
   min-height: 0;

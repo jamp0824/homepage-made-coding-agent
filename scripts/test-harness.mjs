@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   enqueueHomepageGenerationJob,
   synthesizeHomepageGenerationJobStatus,
@@ -422,6 +422,31 @@ runTest("job creator writes valid pending request and prevents overwrite", () =>
   const createdPath = path.join(jobsRoot, "pending", "REQ_CREATE_001.json");
   assert(fs.existsSync(path.join(process.cwd(), createdPath)), "job creator must write pending job");
   run("node", ["scripts/validate-request.mjs", createdPath]);
+  run("node", [
+    "scripts/create-homepage-job.mjs",
+    "--jobs-root",
+    jobsRoot,
+    "--job-id",
+    "JOB_CREATE_CUSTOM",
+    "--request-id",
+    "REQ_CREATE_002",
+    "--company-id",
+    "COMPANY_CREATE_002",
+    "--homepage-type",
+    "company_intro",
+    "--company-name",
+    "주식회사 생성테스트2",
+    "--industry",
+    "IT·소프트웨어",
+    "--business-type",
+    "소프트웨어 개발 및 공급",
+    "--main-business-description",
+    "업무 자동화 솔루션을 개발하고 기업에 공급합니다.",
+  ]);
+  assert(
+    fs.existsSync(path.join(process.cwd(), jobsRoot, "pending", "JOB_CREATE_CUSTOM.json")),
+    "job creator must support custom job_id",
+  );
   runExpectFailure("node", [
     "scripts/create-homepage-job.mjs",
     "--jobs-root",
@@ -441,6 +466,117 @@ runTest("job creator writes valid pending request and prevents overwrite", () =>
     "--main-business-description",
     "업무 자동화 솔루션을 개발하고 기업에 공급합니다.",
   ]);
+});
+
+runTest("api routes enqueue, expose stale hint, process generated, and expose failed status", async () => {
+  const jobsRoot = path.join("harness", "tmp", "api-route-generation-jobs");
+  const companyId = "COMPANY_API_ROUTE_QUEUED";
+  const failedJobId = "JOB_API_ROUTE_FAILED";
+  const sitePath = path.join(process.cwd(), "generated-sites", companyId);
+  let queuedJobId = "";
+
+  fs.rmSync(path.join(process.cwd(), jobsRoot), { force: true, recursive: true });
+  fs.rmSync(sitePath, { force: true, recursive: true });
+
+  await withNextDevServer(
+    {
+      HOMEPAGE_JOBS_ROOT: jobsRoot,
+      HOMEPAGE_JOB_STALE_MS: "1",
+      GOOSE_MODE: "local",
+    },
+    async (baseUrl) => {
+      const request = {
+        ...buildAsyncRequest("REQ_API_ROUTE_QUEUED", companyId),
+        generation_mode: "auto",
+      };
+      const postResponse = await fetch(`${baseUrl}/api/homepage-generation-jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      });
+      const queued = await postResponse.json();
+      const queuedPath = path.join(process.cwd(), jobsRoot, "pending", `${queued.job_id}.json`);
+      const queuedRequest = JSON.parse(fs.readFileSync(queuedPath, "utf8"));
+      queuedJobId = queued.job_id;
+
+      assert(postResponse.status === 202, "api POST must return 202");
+      assert(queued.status === "queued", "api POST must return queued status");
+      assert(queued.customer.preview_available === false, "api queued response must not expose preview");
+      assert(fs.existsSync(queuedPath), "api POST must write pending job");
+      assert(!("generation_mode" in queuedRequest), "api POST must strip transport generation_mode");
+      assert(!fs.existsSync(sitePath), "api POST must not build generated site");
+
+      const oldTime = new Date(Date.now() - 60_000);
+      fs.utimesSync(queuedPath, oldTime, oldTime);
+      const staleResponse = await fetch(`${baseUrl}/api/homepage-generation-jobs/${queued.job_id}`);
+      const stale = await staleResponse.json();
+      assert(stale.status === "queued", "stale pending job must remain queued");
+      assert(Boolean(stale.customer.message), "stale pending job must expose safe customer message");
+      assert(
+        stale.debug.worker_hint === "Run npm run jobs:run in a separate terminal.",
+        "stale pending job must expose debug worker hint",
+      );
+    },
+  );
+
+  run("npm", ["run", "jobs:run", "--", jobsRoot], {
+    env: {
+      ...process.env,
+      GOOSE_MODE: "local",
+    },
+  });
+
+  await withNextDevServer(
+    {
+      HOMEPAGE_JOBS_ROOT: jobsRoot,
+      GOOSE_MODE: "local",
+    },
+    async (baseUrl) => {
+      const generatedResponse = await fetch(`${baseUrl}/api/homepage-generation-jobs/${queuedJobId}`);
+      const generated = await generatedResponse.json();
+      assert(generated.status === "generated", "api-created worker job must become generated");
+      assert(generated.customer.preview_available === true, "generated api job must expose preview");
+      assert(generated.debug.validation_result.passed === true, "generated api job must expose validation");
+      assert(generated.debug.build_result.passed === true, "generated api job must expose build");
+      assert(
+        generated.debug.job_report_path === `${jobsRoot}/completed/${queuedJobId}.json.job-report.json`,
+        "generated api job must expose completed job report path",
+      );
+    },
+  );
+
+  for (const dir of ["pending", "processing", "completed", "failed"]) {
+    fs.mkdirSync(path.join(process.cwd(), jobsRoot, dir), { recursive: true });
+  }
+  fs.copyFileSync(
+    path.join(process.cwd(), "harness", "fixtures", "invalid-homepage-type.json"),
+    path.join(process.cwd(), jobsRoot, "pending", `${failedJobId}.json`),
+  );
+  run("npm", ["run", "jobs:run", "--", jobsRoot], {
+    expectFailure: true,
+    env: {
+      ...process.env,
+      GOOSE_MODE: "local",
+    },
+  });
+
+  await withNextDevServer(
+    {
+      HOMEPAGE_JOBS_ROOT: jobsRoot,
+      GOOSE_MODE: "local",
+    },
+    async (baseUrl) => {
+      const failedResponse = await fetch(`${baseUrl}/api/homepage-generation-jobs/${failedJobId}`);
+      const failed = await failedResponse.json();
+      assert(failed.status === "failed", "failed api job must synthesize failed status");
+      assert(failed.customer.preview_available === false, "failed api job must not expose preview");
+      assert(
+        failed.debug.job_report_path === `${jobsRoot}/failed/${failedJobId}.json.job-report.json`,
+        "failed api job must expose failed job report path",
+      );
+      assert(failed.debug.validation_result.passed === false, "failed api job must expose validation failure");
+    },
+  );
 });
 
 runTest("async generation enqueue returns queued without building", () => {
@@ -479,6 +615,30 @@ runTest("async generation enqueue returns queued without building", () => {
   asyncQueueState.jobsRoot = jobsRoot;
   asyncQueueState.completedJobId = "JOB_ASYNC_QUEUED";
   asyncQueueState.completedCompanyId = companyId;
+});
+
+runTest("batch runner skips pending rename race and continues", () => {
+  const jobsRoot = path.join("harness", "tmp", "rename-race-jobs");
+  const skippedFile = "rename-race.json";
+
+  fs.rmSync(path.join(process.cwd(), jobsRoot), { force: true, recursive: true });
+  fs.mkdirSync(path.join(process.cwd(), jobsRoot, "pending"), { recursive: true });
+  fs.copyFileSync(
+    path.join(process.cwd(), "requests", "sample-company-intro.json"),
+    path.join(process.cwd(), jobsRoot, "pending", skippedFile),
+  );
+
+  run("npm", ["run", "jobs:run", "--", jobsRoot], {
+    env: {
+      ...process.env,
+      HOMEPAGE_TEST_REMOVE_PENDING_BEFORE_RENAME: skippedFile,
+    },
+  });
+
+  const report = readJson(path.join(jobsRoot, "batch-run-report.json"));
+  assert(report.summary.skipped === 1, "batch report must record skipped rename race");
+  assert(report.summary.failed === 0, "skipped rename race must not count as failed job");
+  assert(report.results[0].status === "skipped", "rename race result must be skipped");
 });
 
 runTest("async status helper synthesizes queued and running states", () => {
@@ -699,7 +859,7 @@ runTest("goose required without CLI records manual_required", () => {
 let failed = 0;
 for (const test of tests) {
   try {
-    test.fn();
+    await test.fn();
     console.log(`ok - ${test.name}`);
   } catch (error) {
     failed += 1;
@@ -761,6 +921,53 @@ function hasGooseCli() {
   });
 
   return result.status === 0;
+}
+
+async function withNextDevServer(env, fn) {
+  const port = 32000 + Math.floor(Math.random() * 1000);
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const nextBin = path.join(process.cwd(), "node_modules", ".bin", "next");
+  const child = spawn(nextBin, ["dev", "frontend", "--hostname", "127.0.0.1", "--port", String(port)], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      ...env,
+      NEXT_TELEMETRY_DISABLED: "1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const output = [];
+  child.stdout.on("data", (chunk) => output.push(String(chunk)));
+  child.stderr.on("data", (chunk) => output.push(String(chunk)));
+
+  try {
+    await waitForHttpServer(baseUrl, output);
+    await fn(baseUrl);
+  } finally {
+    child.kill("SIGTERM");
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 3000);
+      child.once("exit", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
+  }
+}
+
+async function waitForHttpServer(baseUrl, output) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 30_000) {
+    try {
+      const response = await fetch(`${baseUrl}/api/generated-sites`);
+      if (response.status < 500) return;
+    } catch {
+      // Server is still starting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Next dev server did not become ready:\n${output.join("").split("\n").slice(-40).join("\n")}`);
 }
 
 function buildAsyncRequest(requestId, companyId) {

@@ -31,7 +31,33 @@ for (const fileName of pendingJobs) {
   const request = readRequestSummary(pendingPath);
   const startedAtForJob = new Date().toISOString();
 
-  fs.renameSync(pendingPath, processingPath);
+  try {
+    if (process.env.HOMEPAGE_TEST_REMOVE_PENDING_BEFORE_RENAME === fileName) {
+      fs.rmSync(pendingPath, { force: true });
+    }
+    fs.renameSync(pendingPath, processingPath);
+  } catch (error) {
+    if (error?.code !== "ENOENT" && error?.code !== "EEXIST") throw error;
+    results.push({
+      request_id: request.request_id,
+      company_id: request.company_id,
+      source_file: fileName,
+      destination: pendingPath,
+      exit_code: null,
+      status: "skipped",
+      succeeded: false,
+      skipped: true,
+      started_at: startedAtForJob,
+      completed_at: new Date().toISOString(),
+      stdout_tail: [],
+      stderr_tail: [],
+      error_type: "pending_rename_skipped",
+      error_message: `Pending job was already moved or unavailable: ${fileName}`,
+      validation_passed: null,
+      build_passed: null,
+    });
+    continue;
+  }
 
   const run = spawnSync("bash", ["scripts/run-homepage-builder.sh", processingPath], {
     cwd: process.cwd(),
@@ -71,6 +97,7 @@ for (const fileName of pendingJobs) {
     exit_code: run.status,
     status: finalStatus,
     succeeded,
+    skipped: false,
     started_at: startedAtForJob,
     completed_at: new Date().toISOString(),
     stdout_tail: tail(run.stdout),
@@ -84,7 +111,8 @@ for (const fileName of pendingJobs) {
 const summary = {
   total: results.length,
   completed: results.filter((result) => result.succeeded).length,
-  failed: results.filter((result) => !result.succeeded).length,
+  failed: results.filter((result) => !result.succeeded && !result.skipped).length,
+  skipped: results.filter((result) => result.skipped).length,
   generated: results.filter((result) => result.status === "generated").length,
   published: results.filter((result) => result.status === "published").length,
   manual_required: results.filter((result) => result.status === "manual_required").length,
@@ -194,7 +222,7 @@ function renderMarkdownReport(report) {
   const rows = report.results
     .map(
       (result) =>
-        `| ${result.request_id} | ${result.company_id} | ${result.status} | ${result.succeeded ? "completed" : "failed"} | ${result.destination} |`,
+        `| ${result.request_id} | ${result.company_id} | ${result.status} | ${formatOutcome(result)} | ${result.destination} |`,
     )
     .join("\n");
 
@@ -206,6 +234,7 @@ function renderMarkdownReport(report) {
 - total: ${report.summary.total}
 - completed: ${report.summary.completed}
 - failed: ${report.summary.failed}
+- skipped: ${report.summary.skipped}
 - generated: ${report.summary.generated}
 - published: ${report.summary.published}
 - manual_required: ${report.summary.manual_required}
@@ -218,4 +247,9 @@ function renderMarkdownReport(report) {
 | --- | --- | --- | --- | --- |
 ${rows || "| none | none | none | none | none |"}
 `;
+}
+
+function formatOutcome(result) {
+  if (result.skipped) return "skipped";
+  return result.succeeded ? "completed" : "failed";
 }

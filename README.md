@@ -197,6 +197,18 @@ npm run goose:draft -- harness/tmp/homepage-drafts/{draft_id}/content.draft.json
 
 여러 request JSON을 큐처럼 처리하려면 `jobs/pending/`에 request 파일을 넣고 실행합니다.
 
+웹 테스트 빌더의 `생성` 버튼도 같은 async queue를 사용합니다. API는 job을 `queued`로 넣고 바로 반환하므로, 로컬에서 실제 처리를 보려면 개발 서버와 worker를 별도 터미널에서 실행합니다.
+
+```bash
+# Terminal 1
+npm run dev
+
+# Terminal 2
+npm run jobs:run
+```
+
+`jobs:run`은 상시 daemon이 아니라 one-shot worker입니다. 실행 시점에 `jobs/pending/`에 있는 작업을 처리하고 종료합니다. `/test-builder`에서 생성 작업이 오래 `queued` 상태로 남아 있으면 다시 `npm run jobs:run`을 실행해 pending 작업을 처리하세요.
+
 request JSON을 직접 쓰지 않고 pending job을 만들 수도 있습니다.
 
 ```bash
@@ -233,4 +245,17 @@ batch 실행 결과는 아래에 남습니다.
 ```text
 jobs/batch-run-report.json
 jobs/batch-run-report.md
+```
+
+개별 작업의 상태는 queue 디렉토리와 per-job report에서 확인할 수 있습니다.
+
+```text
+jobs/pending/{job_id}.json
+jobs/processing/{job_id}.json
+jobs/completed/{job_id}.json
+jobs/completed/{job_id}.json.job-report.json
+jobs/failed/{job_id}.json
+jobs/failed/{job_id}.json.job-report.json
+generated-sites/{company_id}/generation-result.json
+generated-sites/{company_id}/agent-run-report.json
 ```

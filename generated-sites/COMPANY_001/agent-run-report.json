@@ -1,69 +1,27 @@
 {
   "request_id": "REQ_COMPANY_001",
   "company_id": "COMPANY_001",
-  "request_path": "harness/tmp/batch-jobs/completed/sample-company-intro.json",
+  "request_path": "requests/sample-company-intro.json",
   "generated_path": "generated-sites/COMPANY_001",
-  "homepage_type": "company_intro",
-  "template_id": "company_intro_basic",
-  "final_status": "generated",
-  "retry_count": 1,
-  "model_provider": "local_placeholder",
-  "model_name": "deterministic-template",
+  "final_status": "agent_failed",
+  "retry_count": 0,
   "validation_result": {
-    "passed": true,
-    "errors": [],
+    "passed": false,
+    "errors": [
+      "generation has not been validated yet"
+    ],
     "warnings": []
   },
   "build_result": {
-    "passed": true,
+    "passed": false,
     "command": "npm run build",
     "errors": []
   },
-  "error_type": null,
-  "errors": [],
   "timeline": [
-    {
-      "step": "requested",
-      "status": "completed",
-      "message": "Request file was accepted by the runner.",
-      "retry_count": 1,
-      "error_type": null
-    },
-    {
-      "step": "validating_request",
-      "status": "completed",
-      "message": "Request schema validation passed before generation.",
-      "retry_count": 1,
-      "error_type": null
-    },
     {
       "step": "agent_running",
       "status": "completed",
-      "message": "Homepage files were generated under generated-sites/{company_id}.",
-      "retry_count": 1,
-      "error_type": null
-    },
-    {
-      "step": "validating_output",
-      "status": "completed",
-      "message": "Generated-site validation passed.",
-      "retry_count": 1,
-      "error_type": null
-    },
-    {
-      "step": "building",
-      "status": "completed",
-      "message": "Next.js build passed.",
-      "retry_count": 1,
-      "error_type": null
-    },
-    {
-      "step": "generated",
-      "status": "completed",
-      "message": "Final status recorded as generated.",
-      "retry_count": 1,
-      "error_type": null
+      "message": "Initial generated files were written; validation has not run yet."
     }
-  ],
-  "completed_at": "2026-05-23T16:17:46.581Z"
+  ]
 }

@@ -2,11 +2,12 @@ export type HomepageJobCustomer = {
   status: string;
   homepage_url: string;
   preview_available: boolean;
+  message?: string;
 };
 
 export type HomepageJobDebug = {
   queue_state: string;
-  request_path: string;
+  request_path: string | null;
   generated_path: string | null;
   provider: string | null;
   validation_result: unknown;
@@ -14,6 +15,8 @@ export type HomepageJobDebug = {
   agent_run_report_path: string | null;
   job_report_path?: string | null;
   retry_count?: number | null;
+  queued_at?: string | null;
+  worker_hint?: string | null;
 };
 
 export type HomepageJobStatusResponse = {
@@ -39,5 +42,11 @@ export function synthesizeHomepageGenerationJobStatus(input: {
   jobsRoot?: string;
   jobId: string;
 }): HomepageJobStatusResponse | null;
+
+export function normalizeLegacyHomepageGenerationJobStatus(input: {
+  jobId: string;
+  job: Record<string, unknown>;
+  jobPath?: string;
+}): HomepageJobStatusResponse;
 
 export function assertAllowedJobsRoot(rawJobsRoot: string): void;

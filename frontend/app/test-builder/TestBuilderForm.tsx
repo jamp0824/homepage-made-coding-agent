@@ -72,13 +72,17 @@ type GenerationCustomer = {
   status: string;
   homepage_url: string;
   preview_available: boolean;
+  message?: string;
 };
 
 type GenerationDebug = {
   queue_state?: string | null;
+  request_path?: string | null;
   generated_path?: string | null;
   validation_result?: { passed?: boolean } | null;
   build_result?: { passed?: boolean } | null;
+  job_report_path?: string | null;
+  worker_hint?: string | null;
   retry_count?: number | null;
 };
 
@@ -284,7 +288,10 @@ export default function TestBuilderForm() {
       }
 
       if (isPollingStatus(latestGeneration.status)) {
-        setError("작업이 아직 대기 중입니다. worker가 실행 중인지 확인해 주세요.");
+        setError(
+          latestGeneration.customer?.message ||
+            "생성 작업이 대기 중입니다. 작업 처리기가 실행 중인지 확인해 주세요.",
+        );
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "최종 생성 요청 실패");
@@ -526,6 +533,7 @@ function BuilderStep({
   setChatInput: (value: string) => void;
 }) {
   const generatedJob = isGeneratedGeneration(generation) ? generation.job : null;
+  const failedGeneration = isFailedGeneration(generation) ? generation : null;
   const canSend = Boolean(chatInput.trim()) && !isSending;
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -577,6 +585,8 @@ function BuilderStep({
           />
         ) : null}
         {generatedJob ? <GenerationResult job={generatedJob} /> : null}
+        {failedGeneration ? <GenerationFailure generation={failedGeneration} /> : null}
+        {generation?.debug?.worker_hint ? <DebugHint hint={generation.debug.worker_hint} /> : null}
 
         <div className="builder-panel-body">
           <div className="draft-message-list">
@@ -659,6 +669,50 @@ function GenerationResult({ job }: { job: GenerationJob }) {
         생성된 홈페이지 보기
       </Link>
     </div>
+  );
+}
+
+function GenerationFailure({ generation }: { generation: GenerationResponse }) {
+  const status = generation.status || generation.customer?.status || "failed";
+  const validationPassed = generation.debug?.validation_result?.passed;
+  const buildPassed = generation.debug?.build_result?.passed;
+
+  return (
+    <div className="builder-result-card builder-result-failed">
+      <div>
+        <strong>홈페이지 생성 실패</strong>
+        <p>
+          자동 생성이 완료되지 않았습니다. 상태는 {status}입니다.
+        </p>
+      </div>
+      <dl>
+        <div>
+          <dt>status</dt>
+          <dd>{status}</dd>
+        </div>
+        {validationPassed !== undefined ? (
+          <div>
+            <dt>validation</dt>
+            <dd>{validationPassed ? "passed" : "failed"}</dd>
+          </div>
+        ) : null}
+        {buildPassed !== undefined ? (
+          <div>
+            <dt>build</dt>
+            <dd>{buildPassed ? "passed" : "failed"}</dd>
+          </div>
+        ) : null}
+      </dl>
+    </div>
+  );
+}
+
+function DebugHint({ hint }: { hint: string }) {
+  return (
+    <details className="builder-debug-hint">
+      <summary>작업 처리기 안내</summary>
+      <code>{hint}</code>
+    </details>
   );
 }
 
@@ -873,7 +927,18 @@ function isGeneratedGeneration(generation: GenerationResponse | null): generatio
   if (!generation?.job) return false;
   return (
     (generation.job.status === "generated" || generation.job.status === "published") &&
-    generation.customer?.preview_available !== false
+    generation.customer?.preview_available === true
+  );
+}
+
+function isFailedGeneration(generation: GenerationResponse | null): generation is GenerationResponse {
+  const status = generation?.status || generation?.customer?.status;
+  return (
+    status === "failed" ||
+    status === "manual_required" ||
+    status === "agent_failed" ||
+    status === "validation_failed" ||
+    status === "build_failed"
   );
 }
 

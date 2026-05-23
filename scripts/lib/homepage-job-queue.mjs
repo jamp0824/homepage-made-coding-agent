@@ -6,6 +6,10 @@ import { spawnSync } from "node:child_process";
 const queueStates = ["pending", "processing", "completed", "failed"];
 const lookupOrder = ["processing", "pending", "completed", "failed"];
 const jobIdPattern = /^[A-Za-z0-9_-]+$/;
+const queuedWorkerProvider = "queued_worker";
+const staleQueuedMessage = "홈페이지 생성 작업이 대기 중입니다. 잠시 후 다시 확인해 주세요.";
+const workerHint = "Run npm run jobs:run in a separate terminal.";
+const defaultStaleAfterMs = 30 * 1000;
 
 export function resolveHomepageJobsRoot(rawJobsRoot = process.env.HOMEPAGE_JOBS_ROOT || "jobs") {
   assertAllowedJobsRoot(rawJobsRoot);
@@ -52,11 +56,15 @@ export function enqueueHomepageGenerationJob({
 
   const requestId = String(requestBody.request_id || "");
   const companyId = String(requestBody.company_id || "");
-  return buildQueuedResponse({
+  return buildJobResponse({
     jobId,
     requestId,
     companyId,
+    status: "queued",
+    queueState: "pending",
     requestPath: pendingPath,
+    generatedPath: companyId && isSafeCompanyId(companyId) ? path.join("generated-sites", companyId) : "",
+    provider: queuedWorkerProvider,
     queuedAt: now,
   });
 }
@@ -90,30 +98,57 @@ export function synthesizeHomepageGenerationJobStatus({
     (status === "generated" || status === "published") &&
     generationResult?.validation_result?.passed === true &&
     generationResult?.build_result?.passed === true;
+  const staleHint = buildStalePendingHint(located);
 
-  return {
-    ok: true,
+  return buildJobResponse({
     job_id: jobId,
-    request_id: requestId,
-    company_id: companyId,
+    jobId,
+    requestId,
+    companyId,
     status,
-    customer: {
-      status,
-      homepage_url: companyId ? `/homepage/${companyId}` : "",
-      preview_available: previewAvailable,
-    },
-    debug: {
-      queue_state: located.state,
-      request_path: displayPath(located.path),
-      generated_path: generatedPath || null,
-      provider: generationResult?.model_provider || (located.state === "pending" ? "queued_worker" : null),
-      validation_result: generationResult?.validation_result || jobReportToValidationResult(jobReport),
-      build_result: generationResult?.build_result || jobReportToBuildResult(jobReport),
-      agent_run_report_path: fs.existsSync(agentRunReportPath) ? displayPath(agentRunReportPath) : null,
-      job_report_path: fs.existsSync(jobReportPath) ? displayPath(jobReportPath) : null,
-      retry_count: generationResult?.retry_count ?? agentRunReport?.retry_count ?? null,
-    },
-  };
+    queueState: located.state,
+    requestPath: located.path,
+    generatedPath,
+    previewAvailable,
+    provider: generationResult?.model_provider || (located.state === "pending" ? queuedWorkerProvider : null),
+    validationResult: generationResult?.validation_result || jobReportToValidationResult(jobReport),
+    buildResult: generationResult?.build_result || jobReportToBuildResult(jobReport),
+    agentRunReportPath: fs.existsSync(agentRunReportPath) ? agentRunReportPath : "",
+    jobReportPath: fs.existsSync(jobReportPath) ? jobReportPath : "",
+    retryCount: generationResult?.retry_count ?? agentRunReport?.retry_count ?? null,
+    customerMessage: staleHint.customerMessage,
+    workerHint: staleHint.workerHint,
+  });
+}
+
+export function normalizeLegacyHomepageGenerationJobStatus({ jobId, job, jobPath } = {}) {
+  assertSafeJobId(jobId);
+  const result = job?.result && typeof job.result === "object" ? job.result : null;
+  const status = typeof job?.status === "string" ? job.status : "failed";
+  const companyId = String(job?.company_id || "");
+  const generatedPath = String(job?.generated_path || (companyId ? path.join("generated-sites", companyId) : ""));
+  const previewAvailable =
+    (status === "generated" || status === "published") &&
+    result?.validation_result?.passed === true &&
+    result?.build_result?.passed === true;
+  const agentRunReportPath = companyId ? path.join("generated-sites", companyId, "agent-run-report.json") : "";
+
+  return buildJobResponse({
+    jobId: String(job?.job_id || jobId),
+    requestId: String(job?.request_id || ""),
+    companyId,
+    status,
+    queueState: "legacy",
+    requestPath: String(job?.request_path || jobPath || ""),
+    generatedPath,
+    previewAvailable,
+    provider: result?.model_provider || null,
+    validationResult: result?.validation_result || null,
+    buildResult: result?.build_result || null,
+    agentRunReportPath: fs.existsSync(agentRunReportPath) ? agentRunReportPath : "",
+    jobReportPath: "",
+    retryCount: result?.retry_count ?? null,
+  });
 }
 
 export function assertAllowedJobsRoot(rawJobsRoot) {
@@ -131,27 +166,54 @@ export function assertAllowedJobsRoot(rawJobsRoot) {
   }
 }
 
-function buildQueuedResponse({ jobId, requestId, companyId, requestPath, queuedAt }) {
+function buildJobResponse({
+  jobId,
+  requestId,
+  companyId,
+  status,
+  queueState,
+  requestPath,
+  generatedPath = "",
+  previewAvailable = false,
+  provider = null,
+  validationResult = null,
+  buildResult = null,
+  agentRunReportPath = "",
+  jobReportPath = "",
+  retryCount = null,
+  queuedAt = null,
+  customerMessage = null,
+  workerHint: debugWorkerHint = null,
+}) {
+  const customer = {
+    status,
+    homepage_url: companyId ? `/homepage/${companyId}` : "",
+    preview_available: previewAvailable,
+  };
+  if (customerMessage) customer.message = customerMessage;
+
+  const debug = {
+    queue_state: queueState,
+    request_path: requestPath ? displayPath(requestPath) : null,
+    generated_path: generatedPath || null,
+    provider,
+    validation_result: validationResult,
+    build_result: buildResult,
+    agent_run_report_path: agentRunReportPath ? displayPath(agentRunReportPath) : null,
+    job_report_path: jobReportPath ? displayPath(jobReportPath) : null,
+    retry_count: retryCount,
+  };
+  if (queuedAt) debug.queued_at = queuedAt;
+  if (debugWorkerHint) debug.worker_hint = debugWorkerHint;
+
   return {
     ok: true,
     job_id: jobId,
     request_id: requestId,
     company_id: companyId,
-    status: "queued",
-    customer: {
-      status: "queued",
-      homepage_url: companyId ? `/homepage/${companyId}` : "",
-      preview_available: false,
-    },
-    debug: {
-      queue_state: "pending",
-      request_path: displayPath(requestPath),
-      provider: "queued_worker",
-      validation_result: null,
-      build_result: null,
-      agent_run_report_path: null,
-      queued_at: queuedAt,
-    },
+    status,
+    customer,
+    debug,
   };
 }
 
@@ -224,6 +286,26 @@ function synthesizePublicStatus(queueState, generationResult) {
   return "failed";
 }
 
+function buildStalePendingHint(located) {
+  if (located.state !== "pending") return {};
+  const staleAfterMs = readPositiveNumber(process.env.HOMEPAGE_JOB_STALE_MS, defaultStaleAfterMs);
+  if (staleAfterMs <= 0) return {};
+  const ageMs = getFileAgeMs(located.path);
+  if (ageMs < staleAfterMs) return {};
+  return {
+    customerMessage: staleQueuedMessage,
+    workerHint,
+  };
+}
+
+function getFileAgeMs(filePath) {
+  try {
+    return Date.now() - fs.statSync(filePath).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
 function jobReportToValidationResult(jobReport) {
   if (!jobReport || !("validation_passed" in jobReport)) return null;
   return {
@@ -256,6 +338,11 @@ function readJsonIfExists(filePath) {
 
 function isSafeCompanyId(companyId) {
   return /^[A-Za-z0-9_-]+$/.test(companyId);
+}
+
+function readPositiveNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 function displayPath(filePath) {

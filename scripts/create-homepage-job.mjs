@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import {
+  enqueueHomepageGenerationJob,
+  resolveHomepageJobsRoot,
+} from "./lib/homepage-job-queue.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const jobsRoot = args.jobs_root || "jobs";
-assertAllowedJobsRoot(jobsRoot);
+const safeJobsRoot = resolveHomepageJobsRoot(jobsRoot);
 
 const requiredArgs = [
   "request_id",
@@ -41,38 +44,26 @@ const request = {
   created_at: args.created_at || new Date().toISOString(),
 };
 
-const pendingDir = path.join(jobsRoot, "pending");
-const outputPath = path.join(pendingDir, `${request.request_id}.json`);
+const jobId = args.job_id || request.request_id;
 
-fs.mkdirSync(pendingDir, { recursive: true });
+if (args.force === "true") {
+  removeExistingQueueJob(safeJobsRoot, jobId);
+}
 
-if (fs.existsSync(outputPath) && args.force !== "true") {
-  console.error(`Job already exists: ${outputPath}`);
-  console.error("Use --force to overwrite.");
+let queued;
+try {
+  queued = enqueueHomepageGenerationJob({
+    requestBody: request,
+    jobsRoot: safeJobsRoot,
+    jobId,
+  });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : "Job creation failed");
+  if (error?.code === "JOB_EXISTS") console.error("Use --force to overwrite.");
   process.exit(1);
 }
 
-const tempDir = path.join("harness", "tmp", "create-job-validation");
-const tempPath = path.join(tempDir, `${request.request_id}.json`);
-fs.mkdirSync(tempDir, { recursive: true });
-fs.writeFileSync(tempPath, JSON.stringify(request, null, 2));
-
-const validation = spawnSync("node", ["scripts/validate-request.mjs", tempPath], {
-  cwd: process.cwd(),
-  encoding: "utf8",
-});
-
-if (validation.status !== 0) {
-  fs.rmSync(tempPath, { force: true });
-  process.stderr.write(validation.stdout);
-  process.stderr.write(validation.stderr);
-  process.exit(validation.status || 1);
-}
-
-fs.writeFileSync(outputPath, JSON.stringify(request, null, 2));
-fs.rmSync(tempPath, { force: true });
-
-console.log(outputPath);
+console.log(queued.debug.request_path);
 
 function parseArgs(rawArgs) {
   const parsed = {};
@@ -103,16 +94,11 @@ function parseList(value) {
     .filter(Boolean);
 }
 
-function assertAllowedJobsRoot(rawJobsRoot) {
-  const absoluteJobsRoot = path.resolve(rawJobsRoot);
-  const allowedRoots = [path.resolve("jobs"), path.resolve("harness", "tmp")];
-  const allowed = allowedRoots.some(
-    (root) => absoluteJobsRoot === root || absoluteJobsRoot.startsWith(`${root}${path.sep}`),
-  );
-
-  if (!allowed) {
-    console.error(`Refusing to create job outside jobs/ or harness/tmp/: ${rawJobsRoot}`);
-    process.exit(1);
+function removeExistingQueueJob(jobsRoot, jobId) {
+  for (const state of ["pending", "processing", "completed", "failed"]) {
+    for (const suffix of [".json", ".json.job-report.json"]) {
+      fs.rmSync(path.join(jobsRoot, state, `${jobId}${suffix}`), { force: true });
+    }
   }
 }
 
@@ -136,6 +122,7 @@ Optional:
   --company-intro "업무 자동화 솔루션으로 반복 업무를 줄입니다."
   --core-strengths "업무 자동화|데이터 관리|기업 맞춤"
   --preferred-style clean
+  --job-id JOB_100
   --jobs-root jobs
   --force
 `);
