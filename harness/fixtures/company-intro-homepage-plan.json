@@ -1,0 +1,84 @@
+{
+  "request_id": "REQ_HOMEPAGE_PLAN_001",
+  "company_id": "COMPANY_HOMEPAGE_PLAN",
+  "homepage_type": "company_intro",
+  "company_name": "주식회사 플랜레이어",
+  "industry": "제조업",
+  "business_type": "스마트팩토리 데이터 분석 솔루션 개발 및 공급",
+  "main_business_description": "제조 현장의 설비 데이터를 분석해 운영자가 생산 흐름을 안정적으로 확인하도록 돕는 솔루션을 개발하고 공급합니다.",
+  "one_line_intro": "제조 현장을 위한 데이터 분석 솔루션",
+  "company_intro": "주식회사 플랜레이어는 제조 설비 데이터를 정리하고 운영자가 현장 상태를 쉽게 확인할 수 있도록 분석 화면을 제공하는 회사입니다.",
+  "tags": [
+    "스마트팩토리",
+    "데이터 분석"
+  ],
+  "contact": {
+    "email": "plan@example.com"
+  },
+  "core_strengths": [
+    "설비 데이터 분석",
+    "운영 화면 구성",
+    "현장 맞춤 적용"
+  ],
+  "products": [],
+  "portfolio": [
+    {
+      "title": "공정 데이터 시각화",
+      "description": "공정 데이터를 정리해 운영 화면으로 구성했습니다."
+    }
+  ],
+  "history": [],
+  "homepage_plan": {
+    "template_id": "company_intro_basic",
+    "template_variant": "result_style_v1",
+    "goal": "제조 데이터 분석 역량과 문의 전환을 강조하는 회사소개형 홈페이지 구성",
+    "tone": "technical_expert",
+    "section_order": [
+      "hero",
+      "core_strengths",
+      "company_intro",
+      "company_summary",
+      "contact_info",
+      "portfolio",
+      "history",
+      "featured_products",
+      "contact_cta"
+    ],
+    "section_visibility": {
+      "company_summary": false,
+      "contact_info": true,
+      "company_intro": true,
+      "core_strengths": true,
+      "history": false,
+      "portfolio": true,
+      "featured_products": false,
+      "contact_cta": true
+    },
+    "section_layout": {
+      "core_strengths": "list",
+      "history": "compact",
+      "portfolio": "list",
+      "featured_products": "grid_3"
+    },
+    "design_tokens": {
+      "primary": "#334155",
+      "accent": "#12a37f",
+      "radius": "lg"
+    },
+    "block_overrides": {
+      "core_strengths": {
+        "emphasis": "strong"
+      }
+    },
+    "asset_plan": {
+      "hero_image_theme": "manufacturing_data",
+      "hero_image_keywords": [
+        "제조 데이터",
+        "설비 분석",
+        "운영 화면"
+      ]
+    }
+  },
+  "preferred_style": "professional",
+  "created_at": "2026-05-24T10:00:00+09:00"
+}

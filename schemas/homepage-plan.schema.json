@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/homepage-plan.schema.json",
+  "title": "HomepagePlan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "template_id",
+    "template_variant",
+    "goal",
+    "tone",
+    "section_order",
+    "section_visibility",
+    "section_layout",
+    "design_tokens",
+    "block_overrides",
+    "asset_plan"
+  ],
+  "properties": {
+    "template_id": {
+      "type": "string",
+      "enum": ["company_intro_basic", "product_basic"]
+    },
+    "template_variant": {
+      "type": "string",
+      "enum": ["result_style_v1", "basic"]
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 120
+    },
+    "tone": {
+      "type": "string",
+      "enum": [
+        "professional_trust",
+        "warm_friendly",
+        "technical_expert",
+        "clean_corporate",
+        "product_focused"
+      ]
+    },
+    "section_order": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "hero",
+          "company_summary",
+          "company_intro",
+          "core_strengths",
+          "contact_info",
+          "history",
+          "portfolio",
+          "featured_products",
+          "product_area",
+          "product_registration_cta",
+          "contact_cta"
+        ]
+      }
+    },
+    "section_visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "company_summary": { "type": "boolean" },
+        "contact_info": { "type": "boolean" },
+        "company_intro": { "type": "boolean" },
+        "core_strengths": { "type": "boolean" },
+        "history": { "type": "boolean" },
+        "portfolio": { "type": "boolean" },
+        "featured_products": { "type": "boolean" },
+        "product_area": { "type": "boolean" },
+        "product_registration_cta": { "type": "boolean" },
+        "contact_cta": { "type": "boolean" }
+      }
+    },
+    "section_layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "core_strengths": { "type": "string", "enum": ["list", "grid_2"] },
+        "history": { "type": "string", "enum": ["timeline", "compact"] },
+        "portfolio": { "type": "string", "enum": ["list", "grid_2"] },
+        "featured_products": { "type": "string", "enum": ["grid_2", "grid_3"] },
+        "product_area": { "type": "string", "enum": ["grid_2", "grid_3"] }
+      }
+    },
+    "design_tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "type": "string",
+          "enum": ["#2f6fed", "#12a37f", "#4f7fe8", "#264f9d", "#0f766e", "#334155"]
+        },
+        "accent": {
+          "type": "string",
+          "enum": ["#2f6fed", "#12a37f", "#4f7fe8", "#264f9d", "#0f766e", "#334155"]
+        },
+        "radius": {
+          "type": "string",
+          "enum": ["none", "sm", "md", "lg"]
+        }
+      }
+    },
+    "block_overrides": {
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "hero",
+          "company_summary",
+          "company_intro",
+          "core_strengths",
+          "contact_info",
+          "history",
+          "portfolio",
+          "featured_products",
+          "product_area",
+          "product_registration_cta",
+          "contact_cta"
+        ]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "emphasis": { "type": "string", "enum": ["default", "strong"] }
+        }
+      }
+    },
+    "asset_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hero_image_theme", "hero_image_keywords"],
+      "properties": {
+        "hero_image_theme": { "type": "string", "minLength": 1 },
+        "hero_image_keywords": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "maxItems": 8
+        }
+      }
+    }
+  }
+}

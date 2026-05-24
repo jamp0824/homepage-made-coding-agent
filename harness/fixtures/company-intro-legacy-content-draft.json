@@ -1,0 +1,50 @@
+{
+  "request_id": "REQ_LEGACY_CONTENT_DRAFT",
+  "company_id": "COMPANY_LEGACY_CONTENT_DRAFT",
+  "homepage_type": "company_intro",
+  "company_name": "주식회사 레거시드래프트",
+  "industry": "IT·소프트웨어",
+  "business_type": "업무 자동화 솔루션 개발 및 공급",
+  "main_business_description": "기업의 반복 업무를 줄이는 업무 자동화 솔루션을 개발하고 공급합니다.",
+  "one_line_intro": "반복 업무를 줄이는 자동화 솔루션",
+  "company_intro": "주식회사 레거시드래프트는 기업의 업무 흐름을 분석하고 자동화 시스템을 구축하는 회사입니다.",
+  "core_strengths": [
+    "업무 자동화",
+    "데이터 관리",
+    "기업 맞춤 적용"
+  ],
+  "products": [],
+  "portfolio": [],
+  "history": [],
+  "content_source": "ai_suggested_user_confirmed",
+  "content_draft": {
+    "hero_title": "업무 자동화를 빠르게 시작하는 파트너",
+    "hero_image_theme": "legacy_draft_theme",
+    "section_order": [
+      "hero",
+      "core_strengths",
+      "company_intro",
+      "contact_cta"
+    ],
+    "section_visibility": {
+      "company_intro": true,
+      "core_strengths": true,
+      "contact_cta": true
+    },
+    "section_layout": {
+      "core_strengths": "list"
+    },
+    "design_tokens": {
+      "primary": "#264f9d",
+      "accent": "#12a37f",
+      "radius": "sm"
+    },
+    "block_overrides": {
+      "core_strengths": {
+        "emphasis": "strong"
+      }
+    }
+  },
+  "preferred_style": "clean",
+  "created_at": "2026-05-24T10:00:00+09:00"
+}

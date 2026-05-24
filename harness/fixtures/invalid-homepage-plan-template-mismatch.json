@@ -1,0 +1,50 @@
+{
+  "request_id": "REQ_HOMEPAGE_PLAN_MISMATCH",
+  "company_id": "COMPANY_HOMEPAGE_PLAN_MISMATCH",
+  "homepage_type": "company_intro",
+  "company_name": "주식회사 플랜불일치",
+  "industry": "IT·소프트웨어",
+  "business_type": "업무 자동화 솔루션 개발 및 공급",
+  "main_business_description": "기업의 반복 업무를 줄이는 업무 자동화 솔루션을 개발하고 공급합니다.",
+  "core_strengths": [
+    "업무 자동화",
+    "데이터 관리"
+  ],
+  "products": [],
+  "portfolio": [],
+  "history": [],
+  "homepage_plan": {
+    "template_id": "product_basic",
+    "template_variant": "basic",
+    "goal": "회사소개형 요청에 잘못된 상품형 템플릿 메타데이터를 넣은 검증 케이스",
+    "tone": "clean_corporate",
+    "section_order": [
+      "hero",
+      "company_intro",
+      "core_strengths",
+      "contact_cta"
+    ],
+    "section_visibility": {
+      "company_intro": true,
+      "core_strengths": true,
+      "contact_cta": true
+    },
+    "section_layout": {
+      "core_strengths": "grid_2"
+    },
+    "design_tokens": {
+      "primary": "#2f6fed",
+      "accent": "#12a37f",
+      "radius": "md"
+    },
+    "block_overrides": {},
+    "asset_plan": {
+      "hero_image_theme": "it_software",
+      "hero_image_keywords": [
+        "업무 자동화"
+      ]
+    }
+  },
+  "preferred_style": "clean",
+  "created_at": "2026-05-24T10:00:00+09:00"
+}

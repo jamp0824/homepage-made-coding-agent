@@ -33,6 +33,20 @@ runTest("valid request schema: result style empty optionals", () => {
   ]);
 });
 
+runTest("valid request schema: homepage plan", () => {
+  run("node", [
+    "scripts/validate-request.mjs",
+    "harness/fixtures/company-intro-homepage-plan.json",
+  ]);
+});
+
+runTest("valid request schema: legacy content draft", () => {
+  run("node", [
+    "scripts/validate-request.mjs",
+    "harness/fixtures/company-intro-legacy-content-draft.json",
+  ]);
+});
+
 runTest("invalid request fails before generation: missing company_name", () => {
   runExpectFailure("node", [
     "scripts/validate-request.mjs",
@@ -51,6 +65,13 @@ runTest("invalid request fails before generation: unsafe company_id path", () =>
   runExpectFailure("node", [
     "scripts/validate-request.mjs",
     "harness/fixtures/invalid-company-id-path.json",
+  ]);
+});
+
+runTest("invalid request fails before generation: homepage plan template mismatch", () => {
+  runExpectFailure("node", [
+    "scripts/validate-request.mjs",
+    "harness/fixtures/invalid-homepage-plan-template-mismatch.json",
   ]);
 });
 
@@ -148,6 +169,69 @@ runTest("result style empty fixture hides optional sections", () => {
   }
   assert(content.tags.length === 0, "empty fixture must not invent tags");
   assert(Object.keys(content.contact).length === 0, "empty fixture must not invent contact");
+});
+
+runTest("homepage plan fixture applies planning controls", () => {
+  run("bash", [
+    "scripts/run-homepage-builder.sh",
+    "harness/fixtures/company-intro-homepage-plan.json",
+  ]);
+  assertResult("generated-sites/COMPANY_HOMEPAGE_PLAN/generation-result.json", {
+    status: "generated",
+    buildPassed: true,
+    validationPassed: true,
+  });
+
+  const content = readJson("generated-sites/COMPANY_HOMEPAGE_PLAN/content.json");
+  const assets = readJson("generated-sites/COMPANY_HOMEPAGE_PLAN/assets.json");
+  assert(content.homepage_plan, "homepage plan fixture must record normalized homepage_plan");
+  assert(content.homepage_plan.template_id === "company_intro_basic", "homepage_plan template_id must be recorded");
+  assert(content.homepage_plan.template_variant === "result_style_v1", "homepage_plan template_variant must be recorded");
+  assert(content.homepage_plan.tone === "technical_expert", "homepage_plan tone must be recorded");
+  assert(content.sections[1] === "core_strengths", "homepage_plan section_order must reorder sections");
+  assert(!content.sections.includes("company_summary"), "homepage_plan must hide company_summary");
+  assert(content.sections.includes("contact_info"), "homepage_plan must render visible contact_info with data");
+  assert(content.sections.includes("portfolio"), "homepage_plan must allow visible portfolio with data");
+  assert(!content.sections.includes("history"), "homepage_plan must not invent hidden history without data");
+  assert(
+    !content.sections.includes("featured_products"),
+    "homepage_plan must not invent hidden featured_products without data",
+  );
+  assert(content.section_layout.core_strengths === "list", "homepage_plan must apply section layout");
+  assert(content.section_layout.portfolio === "list", "homepage_plan must apply portfolio layout");
+  assert(content.design_tokens.primary === "#334155", "homepage_plan must apply primary token");
+  assert(content.design_tokens.radius === "lg", "homepage_plan must apply radius token");
+  assert(
+    content.block_overrides.core_strengths.emphasis === "strong",
+    "homepage_plan must apply block override",
+  );
+  assert(assets.asset_theme === "manufacturing_data", "homepage_plan asset_plan must set asset theme");
+});
+
+runTest("legacy content_draft fixture still applies design controls", () => {
+  run("bash", [
+    "scripts/run-homepage-builder.sh",
+    "harness/fixtures/company-intro-legacy-content-draft.json",
+  ]);
+  assertResult("generated-sites/COMPANY_LEGACY_CONTENT_DRAFT/generation-result.json", {
+    status: "generated",
+    buildPassed: true,
+    validationPassed: true,
+  });
+
+  const content = readJson("generated-sites/COMPANY_LEGACY_CONTENT_DRAFT/content.json");
+  const assets = readJson("generated-sites/COMPANY_LEGACY_CONTENT_DRAFT/assets.json");
+  assert(!content.homepage_plan, "legacy content_draft fixture must not invent homepage_plan");
+  assert(content.content_draft_applied === true, "legacy content_draft fixture must mark draft applied");
+  assert(content.hero_title === "업무 자동화를 빠르게 시작하는 파트너", "legacy content_draft hero_title must apply");
+  assert(content.sections[1] === "core_strengths", "legacy content_draft section_order must apply");
+  assert(content.section_layout.core_strengths === "list", "legacy content_draft layout must apply");
+  assert(content.design_tokens.primary === "#264f9d", "legacy content_draft design token must apply");
+  assert(
+    content.block_overrides.core_strengths.emphasis === "strong",
+    "legacy content_draft block override must apply",
+  );
+  assert(assets.asset_theme === "legacy_draft_theme", "legacy content_draft asset theme must apply");
 });
 
 runTest("result style request-bound contact, tags, cover, and products are enforced", () => {

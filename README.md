@@ -176,6 +176,54 @@ section_layout
 content_density
 ```
 
+## Figma Make / Stitch-like planning layer
+
+이 프로젝트는 실제 Figma API나 Google Stitch API를 연동하지 않습니다. 대신 Figma Make / Stitch처럼 프롬프트와 채팅으로 홈페이지 구성을 정하는 경험을, 내부 `homepage_plan` 계약으로 제한된 고정 템플릿 위에 구현합니다.
+
+```text
+homepage_plan
+-> fixed template controls
+-> scripts/generate-static-site.mjs
+-> validation/build harness
+-> generated-sites/{company_id}
+```
+
+`homepage_plan`은 자유형 디자인 지시문이 아니라 승인된 템플릿을 어떻게 채울지 정하는 계획서입니다. Goose draft/edit agent는 `homepage_plan`을 생성하거나 patch할 수 있지만, generator는 검증과 정규화를 통과한 plan 필드만 소비합니다.
+
+```text
+template_id
+template_variant
+goal
+tone
+section_order
+section_visibility
+section_layout
+design_tokens
+block_overrides
+asset_plan
+```
+
+`template_id`와 `template_variant`는 자유 선택값이 아닙니다. `company_intro`는 `company_intro_basic` / `result_style_v1`, `product`는 `product_basic` / `basic`과 일치해야 합니다. 불일치하면 request validation이 실패합니다.
+
+호환성을 위해 기존 `content_draft`와 top-level design fields도 계속 동작합니다. 적용 우선순위는 아래와 같습니다.
+
+```text
+request.homepage_plan
+-> request.content_draft.*
+-> legacy top-level design fields
+-> template defaults
+```
+
+금지 범위도 유지합니다.
+
+```text
+Figma API 연동 없음
+Google Stitch API 연동 없음
+이미지 생성 AI 없음
+canvas editor 없음
+free-form page.tsx 생성 없음
+```
+
 `/test-builder`는 아래 UX로 연결되어 있습니다.
 
 ```text

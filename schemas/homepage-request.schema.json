@@ -146,6 +146,9 @@
       "type": "string",
       "enum": ["request_only", "ai_suggested", "ai_suggested_user_confirmed"]
     },
+    "homepage_plan": {
+      "$ref": "homepage-plan.schema.json"
+    },
     "content_draft": {
       "$ref": "content-draft.schema.json"
     },
