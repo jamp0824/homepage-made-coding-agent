@@ -42,6 +42,7 @@ const allowedTopLevelFields = new Set([
   "section_order",
   "block_overrides",
   "content_source",
+  "homepage_plan",
   "content_draft",
   "draft_id",
   "confirmed_at",
@@ -68,6 +69,23 @@ const allowedLayoutValues = {
   portfolio: new Set(["list", "grid_2"]),
   featured_products: new Set(["grid_2", "grid_3"]),
   product_area: new Set(["grid_2", "grid_3"]),
+};
+const homepagePlanTones = new Set([
+  "professional_trust",
+  "warm_friendly",
+  "technical_expert",
+  "clean_corporate",
+  "product_focused",
+]);
+const expectedTemplateByHomepageType = {
+  company_intro: {
+    template_id: "company_intro_basic",
+    template_variant: "result_style_v1",
+  },
+  product: {
+    template_id: "product_basic",
+    template_variant: "basic",
+  },
 };
 
 const errors = [];
@@ -188,6 +206,7 @@ if (!request || typeof request !== "object" || Array.isArray(request)) {
   ) {
     errors.push("content_source must be request_only, ai_suggested, or ai_suggested_user_confirmed");
   }
+  if ("homepage_plan" in request) validateHomepagePlan(request.homepage_plan, errors, request);
   if ("content_draft" in request) validateContentDraft(request.content_draft, errors);
   if ("draft_id" in request && typeof request.draft_id !== "string") {
     errors.push("draft_id must be a string");
@@ -271,6 +290,7 @@ function validateContentDraft(contentDraft, outputErrors) {
     "design_tokens",
     "section_order",
     "block_overrides",
+    "homepage_plan",
     "hero_image_theme",
     "hero_image_keywords",
     "cta_text",
@@ -340,11 +360,120 @@ function validateContentDraft(contentDraft, outputErrors) {
   if ("block_overrides" in contentDraft) {
     validateBlockOverrides(contentDraft.block_overrides, outputErrors, "content_draft.");
   }
+  if ("homepage_plan" in contentDraft) {
+    validateHomepagePlan(contentDraft.homepage_plan, outputErrors, request, "content_draft.");
+  }
   if (
     "content_density" in contentDraft &&
     !["compact", "standard", "rich"].includes(contentDraft.content_density)
   ) {
     outputErrors.push("content_draft.content_density must be compact, standard, or rich");
+  }
+}
+
+function validateHomepagePlan(homepagePlan, outputErrors, parentRequest, prefix = "") {
+  const fieldName = `${prefix}homepage_plan`;
+  if (!homepagePlan || typeof homepagePlan !== "object" || Array.isArray(homepagePlan)) {
+    outputErrors.push(`${fieldName} must be an object`);
+    return;
+  }
+
+  const requiredFields = [
+    "template_id",
+    "template_variant",
+    "goal",
+    "tone",
+    "section_order",
+    "section_visibility",
+    "section_layout",
+    "design_tokens",
+    "block_overrides",
+    "asset_plan",
+  ];
+  const allowedFields = new Set(requiredFields);
+  for (const requiredField of requiredFields) {
+    if (!(requiredField in homepagePlan)) {
+      outputErrors.push(`${fieldName}.${requiredField} is required`);
+    }
+  }
+  for (const field of Object.keys(homepagePlan)) {
+    if (!allowedFields.has(field)) {
+      outputErrors.push(`${fieldName} has unsupported field: ${field}`);
+    }
+  }
+
+  const expectedTemplate = expectedTemplateByHomepageType[parentRequest?.homepage_type];
+  if (expectedTemplate) {
+    if (homepagePlan.template_id !== expectedTemplate.template_id) {
+      outputErrors.push(`${fieldName}.template_id must be ${expectedTemplate.template_id}`);
+    }
+    if (homepagePlan.template_variant !== expectedTemplate.template_variant) {
+      outputErrors.push(`${fieldName}.template_variant must be ${expectedTemplate.template_variant}`);
+    }
+  }
+
+  if (typeof homepagePlan.goal !== "string") {
+    outputErrors.push(`${fieldName}.goal must be a string`);
+  } else if (homepagePlan.goal.length < 10 || homepagePlan.goal.length > 120) {
+    outputErrors.push(`${fieldName}.goal must be between 10 and 120 characters`);
+  }
+
+  if (!homepagePlanTones.has(homepagePlan.tone)) {
+    outputErrors.push(`${fieldName}.tone must be an allowed tone`);
+  }
+
+  if ("section_order" in homepagePlan) {
+    validateSectionOrder(homepagePlan.section_order, outputErrors, `${fieldName}.`);
+  }
+  if ("section_visibility" in homepagePlan) {
+    validateSectionVisibility(homepagePlan.section_visibility, outputErrors, `${fieldName}.`);
+  }
+  if ("section_layout" in homepagePlan) {
+    validateSectionLayout(homepagePlan.section_layout, outputErrors, `${fieldName}.`);
+  }
+  if ("design_tokens" in homepagePlan) {
+    validateDesignTokens(homepagePlan.design_tokens, outputErrors, `${fieldName}.`);
+  }
+  if ("block_overrides" in homepagePlan) {
+    validateBlockOverrides(homepagePlan.block_overrides, outputErrors, `${fieldName}.`);
+  }
+  if ("asset_plan" in homepagePlan) {
+    validateAssetPlan(homepagePlan.asset_plan, outputErrors, `${fieldName}.`);
+  }
+}
+
+function validateAssetPlan(assetPlan, outputErrors, prefix = "") {
+  if (!assetPlan || typeof assetPlan !== "object" || Array.isArray(assetPlan)) {
+    outputErrors.push(`${prefix}asset_plan must be an object`);
+    return;
+  }
+
+  const allowedFields = new Set(["hero_image_theme", "hero_image_keywords"]);
+  for (const requiredField of allowedFields) {
+    if (!(requiredField in assetPlan)) {
+      outputErrors.push(`${prefix}asset_plan.${requiredField} is required`);
+    }
+  }
+  for (const field of Object.keys(assetPlan)) {
+    if (!allowedFields.has(field)) {
+      outputErrors.push(`${prefix}asset_plan has unsupported field: ${field}`);
+    }
+  }
+
+  if (typeof assetPlan.hero_image_theme !== "string" || assetPlan.hero_image_theme.trim() === "") {
+    outputErrors.push(`${prefix}asset_plan.hero_image_theme must be a non-empty string`);
+  }
+  if (!Array.isArray(assetPlan.hero_image_keywords)) {
+    outputErrors.push(`${prefix}asset_plan.hero_image_keywords must be an array`);
+  } else {
+    if (assetPlan.hero_image_keywords.length > 8) {
+      outputErrors.push(`${prefix}asset_plan.hero_image_keywords must contain at most 8 items`);
+    }
+    assetPlan.hero_image_keywords.forEach((item, index) => {
+      if (typeof item !== "string" || item.trim() === "") {
+        outputErrors.push(`${prefix}asset_plan.hero_image_keywords[${index}] must be a non-empty string`);
+      }
+    });
   }
 }
 
@@ -381,40 +510,40 @@ function validatePortfolio(portfolio, outputErrors) {
   });
 }
 
-function validateSectionVisibility(sectionVisibility, outputErrors) {
+function validateSectionVisibility(sectionVisibility, outputErrors, prefix = "") {
   if (!sectionVisibility || typeof sectionVisibility !== "object" || Array.isArray(sectionVisibility)) {
-    outputErrors.push("section_visibility must be an object");
+    outputErrors.push(`${prefix}section_visibility must be an object`);
     return;
   }
 
   for (const [section, visible] of Object.entries(sectionVisibility)) {
     if (!allowedVisibilitySections.has(section)) {
-      outputErrors.push(`section_visibility has unsupported section: ${section}`);
+      outputErrors.push(`${prefix}section_visibility has unsupported section: ${section}`);
       continue;
     }
     if (typeof visible !== "boolean") {
-      outputErrors.push(`section_visibility.${section} must be a boolean`);
+      outputErrors.push(`${prefix}section_visibility.${section} must be a boolean`);
     }
     if (visible === false && requiredVisibleSections.has(section)) {
-      outputErrors.push(`section_visibility.${section} cannot be false`);
+      outputErrors.push(`${prefix}section_visibility.${section} cannot be false`);
     }
   }
 }
 
-function validateSectionLayout(sectionLayout, outputErrors) {
+function validateSectionLayout(sectionLayout, outputErrors, prefix = "") {
   if (!sectionLayout || typeof sectionLayout !== "object" || Array.isArray(sectionLayout)) {
-    outputErrors.push("section_layout must be an object");
+    outputErrors.push(`${prefix}section_layout must be an object`);
     return;
   }
 
   for (const [section, layout] of Object.entries(sectionLayout)) {
     const allowed = allowedLayoutValues[section];
     if (!allowed) {
-      outputErrors.push(`section_layout has unsupported section: ${section}`);
+      outputErrors.push(`${prefix}section_layout has unsupported section: ${section}`);
       continue;
     }
     if (typeof layout !== "string" || !allowed.has(layout)) {
-      outputErrors.push(`section_layout.${section} has unsupported layout: ${layout}`);
+      outputErrors.push(`${prefix}section_layout.${section} has unsupported layout: ${layout}`);
     }
   }
 }

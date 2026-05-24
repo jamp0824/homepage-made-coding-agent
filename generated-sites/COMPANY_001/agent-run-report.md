@@ -4,13 +4,13 @@
 
 - request_id: REQ_COMPANY_001
 - company_id: COMPANY_001
-- request_path: harness/tmp/batch-jobs/completed/sample-company-intro.json
+- request_path: requests/sample-company-intro.json
 - generated_path: generated-sites/COMPANY_001
 - homepage_type: company_intro
 - template_id: company_intro_basic
 - final_status: generated
 - retry_count: 1
-- completed_at: 2026-05-23T16:17:46.581Z
+- completed_at: 2026-05-23T17:24:02.917Z
 
 ## Validation
 

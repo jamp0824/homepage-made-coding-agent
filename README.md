@@ -176,6 +176,54 @@ section_layout
 content_density
 ```
 
+## Figma Make / Stitch-like planning layer
+
+이 프로젝트는 실제 Figma API나 Google Stitch API를 연동하지 않습니다. 대신 Figma Make / Stitch처럼 프롬프트와 채팅으로 홈페이지 구성을 정하는 경험을, 내부 `homepage_plan` 계약으로 제한된 고정 템플릿 위에 구현합니다.
+
+```text
+homepage_plan
+-> fixed template controls
+-> scripts/generate-static-site.mjs
+-> validation/build harness
+-> generated-sites/{company_id}
+```
+
+`homepage_plan`은 자유형 디자인 지시문이 아니라 승인된 템플릿을 어떻게 채울지 정하는 계획서입니다. Goose draft/edit agent는 `homepage_plan`을 생성하거나 patch할 수 있지만, generator는 검증과 정규화를 통과한 plan 필드만 소비합니다.
+
+```text
+template_id
+template_variant
+goal
+tone
+section_order
+section_visibility
+section_layout
+design_tokens
+block_overrides
+asset_plan
+```
+
+`template_id`와 `template_variant`는 자유 선택값이 아닙니다. `company_intro`는 `company_intro_basic` / `result_style_v1`, `product`는 `product_basic` / `basic`과 일치해야 합니다. 불일치하면 request validation이 실패합니다.
+
+호환성을 위해 기존 `content_draft`와 top-level design fields도 계속 동작합니다. 적용 우선순위는 아래와 같습니다.
+
+```text
+request.homepage_plan
+-> request.content_draft.*
+-> legacy top-level design fields
+-> template defaults
+```
+
+금지 범위도 유지합니다.
+
+```text
+Figma API 연동 없음
+Google Stitch API 연동 없음
+이미지 생성 AI 없음
+canvas editor 없음
+free-form page.tsx 생성 없음
+```
+
 `/test-builder`는 아래 UX로 연결되어 있습니다.
 
 ```text
@@ -196,6 +244,18 @@ npm run goose:draft -- harness/tmp/homepage-drafts/{draft_id}/content.draft.json
 ## Pending Job Batch Runner
 
 여러 request JSON을 큐처럼 처리하려면 `jobs/pending/`에 request 파일을 넣고 실행합니다.
+
+웹 테스트 빌더의 `생성` 버튼도 같은 async queue를 사용합니다. API는 job을 `queued`로 넣고 바로 반환하므로, 로컬에서 실제 처리를 보려면 개발 서버와 worker를 별도 터미널에서 실행합니다.
+
+```bash
+# Terminal 1
+npm run dev
+
+# Terminal 2
+npm run jobs:run
+```
+
+`jobs:run`은 상시 daemon이 아니라 one-shot worker입니다. 실행 시점에 `jobs/pending/`에 있는 작업을 처리하고 종료합니다. `/test-builder`에서 생성 작업이 오래 `queued` 상태로 남아 있으면 다시 `npm run jobs:run`을 실행해 pending 작업을 처리하세요.
 
 request JSON을 직접 쓰지 않고 pending job을 만들 수도 있습니다.
 
@@ -233,4 +293,17 @@ batch 실행 결과는 아래에 남습니다.
 ```text
 jobs/batch-run-report.json
 jobs/batch-run-report.md
+```
+
+개별 작업의 상태는 queue 디렉토리와 per-job report에서 확인할 수 있습니다.
+
+```text
+jobs/pending/{job_id}.json
+jobs/processing/{job_id}.json
+jobs/completed/{job_id}.json
+jobs/completed/{job_id}.json.job-report.json
+jobs/failed/{job_id}.json
+jobs/failed/{job_id}.json.job-report.json
+generated-sites/{company_id}/generation-result.json
+generated-sites/{company_id}/agent-run-report.json
 ```

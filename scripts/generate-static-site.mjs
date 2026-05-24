@@ -50,7 +50,9 @@ const sitePath = path.join("generated-sites", request.company_id);
 fs.mkdirSync(sitePath, { recursive: true });
 
 const contentDraft = normalizeContentDraft(request.content_draft);
+const homepagePlan = normalizeHomepagePlan(request.homepage_plan);
 const assetTheme =
+  homepagePlan.asset_plan?.hero_image_theme ||
   draftString("hero_image_theme") ||
   templateConfig.asset_theme_defaults?.[request.industry] ||
   templateConfig.asset_theme_defaults?.default ||
@@ -61,12 +63,21 @@ const contactEntries = Object.entries(contact).filter(([, value]) => Boolean(val
 const products = Array.isArray(request.products) ? request.products : [];
 const history = Array.isArray(request.history) ? request.history : [];
 const portfolio = Array.isArray(request.portfolio) ? request.portfolio : [];
-const sectionVisibility = normalizeSectionVisibility(contentDraft.section_visibility ?? request.section_visibility);
-const sectionLayout = normalizeSectionLayout(contentDraft.section_layout ?? request.section_layout);
+const sectionVisibility = normalizeSectionVisibility(
+  homepagePlan.section_visibility ?? contentDraft.section_visibility ?? request.section_visibility,
+);
+const sectionLayout = normalizeSectionLayout(
+  homepagePlan.section_layout ?? contentDraft.section_layout ?? request.section_layout,
+);
 const contentDensity = normalizeContentDensity(contentDraft.content_density ?? request.content_density);
-const designTokens = normalizeDesignTokens(contentDraft.design_tokens ?? request.design_tokens);
-const sectionOrder = normalizeSectionOrder(contentDraft.section_order ?? request.section_order, request.homepage_type);
-const blockOverrides = normalizeBlockOverrides(contentDraft.block_overrides ?? request.block_overrides);
+const designTokens = normalizeDesignTokens(homepagePlan.design_tokens ?? contentDraft.design_tokens ?? request.design_tokens);
+const sectionOrder = normalizeSectionOrder(
+  homepagePlan.section_order ?? contentDraft.section_order ?? request.section_order,
+  request.homepage_type,
+);
+const blockOverrides = normalizeBlockOverrides(
+  homepagePlan.block_overrides ?? contentDraft.block_overrides ?? request.block_overrides,
+);
 const contentSource =
   typeof request.content_source === "string" ? request.content_source : "request_only";
 const coreStrengths =
@@ -123,6 +134,7 @@ const content = {
   design_tokens: designTokens,
   section_order: sectionOrder,
   block_overrides: blockOverrides,
+  ...(Object.keys(homepagePlan).length > 0 ? { homepage_plan: homepagePlan } : {}),
   content_source: contentSource,
   content_draft_applied: Object.keys(contentDraft).length > 0,
   draft_id: typeof request.draft_id === "string" ? request.draft_id : "",
@@ -394,6 +406,57 @@ function normalizeContentDraft(value) {
   if (sectionOrder.length > 0) output.section_order = sectionOrder;
   const blockOverrides = normalizeBlockOverrides(value.block_overrides);
   if (Object.keys(blockOverrides).length > 0) output.block_overrides = blockOverrides;
+  return output;
+}
+
+function normalizeHomepagePlan(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  const expectedTemplateId = templateId;
+  const expectedTemplateVariant = request.homepage_type === "company_intro" ? RESULT_STYLE_VARIANT : "basic";
+  if (value.template_id !== expectedTemplateId || value.template_variant !== expectedTemplateVariant) {
+    console.error(
+      `homepage_plan template metadata must match ${expectedTemplateId}/${expectedTemplateVariant}`,
+    );
+    process.exit(1);
+  }
+
+  const output = {
+    template_id: expectedTemplateId,
+    template_variant: expectedTemplateVariant,
+  };
+
+  if (typeof value.goal === "string" && value.goal.trim()) {
+    output.goal = value.goal.trim();
+  }
+  if (
+    [
+      "professional_trust",
+      "warm_friendly",
+      "technical_expert",
+      "clean_corporate",
+      "product_focused",
+    ].includes(value.tone)
+  ) {
+    output.tone = value.tone;
+  }
+
+  output.section_visibility = normalizeSectionVisibility(value.section_visibility);
+  output.section_layout = normalizeSectionLayout(value.section_layout);
+  output.design_tokens = normalizeDesignTokens(value.design_tokens);
+  output.section_order = normalizeSectionOrder(value.section_order, request.homepage_type);
+  output.block_overrides = normalizeBlockOverrides(value.block_overrides);
+
+  const assetPlan = {};
+  if (value.asset_plan && typeof value.asset_plan === "object" && !Array.isArray(value.asset_plan)) {
+    if (typeof value.asset_plan.hero_image_theme === "string" && value.asset_plan.hero_image_theme.trim()) {
+      assetPlan.hero_image_theme = value.asset_plan.hero_image_theme.trim();
+    }
+    const heroImageKeywords = normalizeStringArray(value.asset_plan.hero_image_keywords).slice(0, 8);
+    assetPlan.hero_image_keywords = heroImageKeywords;
+  }
+  output.asset_plan = assetPlan;
+
   return output;
 }
 

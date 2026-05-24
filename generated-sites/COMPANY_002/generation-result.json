@@ -1,7 +1,7 @@
 {
   "request_id": "REQ_PRODUCT_EMPTY_001",
   "company_id": "COMPANY_002",
-  "status": "generated",
+  "status": "agent_failed",
   "homepage_type": "product",
   "template_id": "product_basic",
   "generated_path": "generated-sites/COMPANY_002",
@@ -9,27 +9,29 @@
   "model_provider": "local_placeholder",
   "model_name": "deterministic-template",
   "generated_files": [
-    "agent-run-report.json",
-    "agent-run-report.md",
-    "assets.json",
     "content.json",
-    "generation-result.json",
-    "index.html",
+    "assets.json",
     "metadata.json",
     "page.tsx",
+    "index.html",
     "styles.css",
-    "validation-report.json"
+    "generation-result.json",
+    "validation-report.json",
+    "agent-run-report.json",
+    "agent-run-report.md"
   ],
   "build_result": {
-    "passed": true,
+    "passed": false,
     "command": "npm run build",
     "errors": []
   },
   "validation_result": {
-    "passed": true,
-    "errors": [],
+    "passed": false,
+    "errors": [
+      "generation has not been validated yet"
+    ],
     "warnings": []
   },
-  "retry_count": 1,
-  "completed_at": "2026-05-23T16:15:09.831Z"
+  "retry_count": 0,
+  "completed_at": "2026-05-23T17:24:03.042Z"
 }

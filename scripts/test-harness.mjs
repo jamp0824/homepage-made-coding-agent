@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   enqueueHomepageGenerationJob,
   synthesizeHomepageGenerationJobStatus,
@@ -33,6 +33,20 @@ runTest("valid request schema: result style empty optionals", () => {
   ]);
 });
 
+runTest("valid request schema: homepage plan", () => {
+  run("node", [
+    "scripts/validate-request.mjs",
+    "harness/fixtures/company-intro-homepage-plan.json",
+  ]);
+});
+
+runTest("valid request schema: legacy content draft", () => {
+  run("node", [
+    "scripts/validate-request.mjs",
+    "harness/fixtures/company-intro-legacy-content-draft.json",
+  ]);
+});
+
 runTest("invalid request fails before generation: missing company_name", () => {
   runExpectFailure("node", [
     "scripts/validate-request.mjs",
@@ -51,6 +65,13 @@ runTest("invalid request fails before generation: unsafe company_id path", () =>
   runExpectFailure("node", [
     "scripts/validate-request.mjs",
     "harness/fixtures/invalid-company-id-path.json",
+  ]);
+});
+
+runTest("invalid request fails before generation: homepage plan template mismatch", () => {
+  runExpectFailure("node", [
+    "scripts/validate-request.mjs",
+    "harness/fixtures/invalid-homepage-plan-template-mismatch.json",
   ]);
 });
 
@@ -148,6 +169,69 @@ runTest("result style empty fixture hides optional sections", () => {
   }
   assert(content.tags.length === 0, "empty fixture must not invent tags");
   assert(Object.keys(content.contact).length === 0, "empty fixture must not invent contact");
+});
+
+runTest("homepage plan fixture applies planning controls", () => {
+  run("bash", [
+    "scripts/run-homepage-builder.sh",
+    "harness/fixtures/company-intro-homepage-plan.json",
+  ]);
+  assertResult("generated-sites/COMPANY_HOMEPAGE_PLAN/generation-result.json", {
+    status: "generated",
+    buildPassed: true,
+    validationPassed: true,
+  });
+
+  const content = readJson("generated-sites/COMPANY_HOMEPAGE_PLAN/content.json");
+  const assets = readJson("generated-sites/COMPANY_HOMEPAGE_PLAN/assets.json");
+  assert(content.homepage_plan, "homepage plan fixture must record normalized homepage_plan");
+  assert(content.homepage_plan.template_id === "company_intro_basic", "homepage_plan template_id must be recorded");
+  assert(content.homepage_plan.template_variant === "result_style_v1", "homepage_plan template_variant must be recorded");
+  assert(content.homepage_plan.tone === "technical_expert", "homepage_plan tone must be recorded");
+  assert(content.sections[1] === "core_strengths", "homepage_plan section_order must reorder sections");
+  assert(!content.sections.includes("company_summary"), "homepage_plan must hide company_summary");
+  assert(content.sections.includes("contact_info"), "homepage_plan must render visible contact_info with data");
+  assert(content.sections.includes("portfolio"), "homepage_plan must allow visible portfolio with data");
+  assert(!content.sections.includes("history"), "homepage_plan must not invent hidden history without data");
+  assert(
+    !content.sections.includes("featured_products"),
+    "homepage_plan must not invent hidden featured_products without data",
+  );
+  assert(content.section_layout.core_strengths === "list", "homepage_plan must apply section layout");
+  assert(content.section_layout.portfolio === "list", "homepage_plan must apply portfolio layout");
+  assert(content.design_tokens.primary === "#334155", "homepage_plan must apply primary token");
+  assert(content.design_tokens.radius === "lg", "homepage_plan must apply radius token");
+  assert(
+    content.block_overrides.core_strengths.emphasis === "strong",
+    "homepage_plan must apply block override",
+  );
+  assert(assets.asset_theme === "manufacturing_data", "homepage_plan asset_plan must set asset theme");
+});
+
+runTest("legacy content_draft fixture still applies design controls", () => {
+  run("bash", [
+    "scripts/run-homepage-builder.sh",
+    "harness/fixtures/company-intro-legacy-content-draft.json",
+  ]);
+  assertResult("generated-sites/COMPANY_LEGACY_CONTENT_DRAFT/generation-result.json", {
+    status: "generated",
+    buildPassed: true,
+    validationPassed: true,
+  });
+
+  const content = readJson("generated-sites/COMPANY_LEGACY_CONTENT_DRAFT/content.json");
+  const assets = readJson("generated-sites/COMPANY_LEGACY_CONTENT_DRAFT/assets.json");
+  assert(!content.homepage_plan, "legacy content_draft fixture must not invent homepage_plan");
+  assert(content.content_draft_applied === true, "legacy content_draft fixture must mark draft applied");
+  assert(content.hero_title === "업무 자동화를 빠르게 시작하는 파트너", "legacy content_draft hero_title must apply");
+  assert(content.sections[1] === "core_strengths", "legacy content_draft section_order must apply");
+  assert(content.section_layout.core_strengths === "list", "legacy content_draft layout must apply");
+  assert(content.design_tokens.primary === "#264f9d", "legacy content_draft design token must apply");
+  assert(
+    content.block_overrides.core_strengths.emphasis === "strong",
+    "legacy content_draft block override must apply",
+  );
+  assert(assets.asset_theme === "legacy_draft_theme", "legacy content_draft asset theme must apply");
 });
 
 runTest("result style request-bound contact, tags, cover, and products are enforced", () => {
@@ -422,6 +506,31 @@ runTest("job creator writes valid pending request and prevents overwrite", () =>
   const createdPath = path.join(jobsRoot, "pending", "REQ_CREATE_001.json");
   assert(fs.existsSync(path.join(process.cwd(), createdPath)), "job creator must write pending job");
   run("node", ["scripts/validate-request.mjs", createdPath]);
+  run("node", [
+    "scripts/create-homepage-job.mjs",
+    "--jobs-root",
+    jobsRoot,
+    "--job-id",
+    "JOB_CREATE_CUSTOM",
+    "--request-id",
+    "REQ_CREATE_002",
+    "--company-id",
+    "COMPANY_CREATE_002",
+    "--homepage-type",
+    "company_intro",
+    "--company-name",
+    "주식회사 생성테스트2",
+    "--industry",
+    "IT·소프트웨어",
+    "--business-type",
+    "소프트웨어 개발 및 공급",
+    "--main-business-description",
+    "업무 자동화 솔루션을 개발하고 기업에 공급합니다.",
+  ]);
+  assert(
+    fs.existsSync(path.join(process.cwd(), jobsRoot, "pending", "JOB_CREATE_CUSTOM.json")),
+    "job creator must support custom job_id",
+  );
   runExpectFailure("node", [
     "scripts/create-homepage-job.mjs",
     "--jobs-root",
@@ -441,6 +550,117 @@ runTest("job creator writes valid pending request and prevents overwrite", () =>
     "--main-business-description",
     "업무 자동화 솔루션을 개발하고 기업에 공급합니다.",
   ]);
+});
+
+runTest("api routes enqueue, expose stale hint, process generated, and expose failed status", async () => {
+  const jobsRoot = path.join("harness", "tmp", "api-route-generation-jobs");
+  const companyId = "COMPANY_API_ROUTE_QUEUED";
+  const failedJobId = "JOB_API_ROUTE_FAILED";
+  const sitePath = path.join(process.cwd(), "generated-sites", companyId);
+  let queuedJobId = "";
+
+  fs.rmSync(path.join(process.cwd(), jobsRoot), { force: true, recursive: true });
+  fs.rmSync(sitePath, { force: true, recursive: true });
+
+  await withNextDevServer(
+    {
+      HOMEPAGE_JOBS_ROOT: jobsRoot,
+      HOMEPAGE_JOB_STALE_MS: "1",
+      GOOSE_MODE: "local",
+    },
+    async (baseUrl) => {
+      const request = {
+        ...buildAsyncRequest("REQ_API_ROUTE_QUEUED", companyId),
+        generation_mode: "auto",
+      };
+      const postResponse = await fetch(`${baseUrl}/api/homepage-generation-jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      });
+      const queued = await postResponse.json();
+      const queuedPath = path.join(process.cwd(), jobsRoot, "pending", `${queued.job_id}.json`);
+      const queuedRequest = JSON.parse(fs.readFileSync(queuedPath, "utf8"));
+      queuedJobId = queued.job_id;
+
+      assert(postResponse.status === 202, "api POST must return 202");
+      assert(queued.status === "queued", "api POST must return queued status");
+      assert(queued.customer.preview_available === false, "api queued response must not expose preview");
+      assert(fs.existsSync(queuedPath), "api POST must write pending job");
+      assert(!("generation_mode" in queuedRequest), "api POST must strip transport generation_mode");
+      assert(!fs.existsSync(sitePath), "api POST must not build generated site");
+
+      const oldTime = new Date(Date.now() - 60_000);
+      fs.utimesSync(queuedPath, oldTime, oldTime);
+      const staleResponse = await fetch(`${baseUrl}/api/homepage-generation-jobs/${queued.job_id}`);
+      const stale = await staleResponse.json();
+      assert(stale.status === "queued", "stale pending job must remain queued");
+      assert(Boolean(stale.customer.message), "stale pending job must expose safe customer message");
+      assert(
+        stale.debug.worker_hint === "Run npm run jobs:run in a separate terminal.",
+        "stale pending job must expose debug worker hint",
+      );
+    },
+  );
+
+  run("npm", ["run", "jobs:run", "--", jobsRoot], {
+    env: {
+      ...process.env,
+      GOOSE_MODE: "local",
+    },
+  });
+
+  await withNextDevServer(
+    {
+      HOMEPAGE_JOBS_ROOT: jobsRoot,
+      GOOSE_MODE: "local",
+    },
+    async (baseUrl) => {
+      const generatedResponse = await fetch(`${baseUrl}/api/homepage-generation-jobs/${queuedJobId}`);
+      const generated = await generatedResponse.json();
+      assert(generated.status === "generated", "api-created worker job must become generated");
+      assert(generated.customer.preview_available === true, "generated api job must expose preview");
+      assert(generated.debug.validation_result.passed === true, "generated api job must expose validation");
+      assert(generated.debug.build_result.passed === true, "generated api job must expose build");
+      assert(
+        generated.debug.job_report_path === `${jobsRoot}/completed/${queuedJobId}.json.job-report.json`,
+        "generated api job must expose completed job report path",
+      );
+    },
+  );
+
+  for (const dir of ["pending", "processing", "completed", "failed"]) {
+    fs.mkdirSync(path.join(process.cwd(), jobsRoot, dir), { recursive: true });
+  }
+  fs.copyFileSync(
+    path.join(process.cwd(), "harness", "fixtures", "invalid-homepage-type.json"),
+    path.join(process.cwd(), jobsRoot, "pending", `${failedJobId}.json`),
+  );
+  run("npm", ["run", "jobs:run", "--", jobsRoot], {
+    expectFailure: true,
+    env: {
+      ...process.env,
+      GOOSE_MODE: "local",
+    },
+  });
+
+  await withNextDevServer(
+    {
+      HOMEPAGE_JOBS_ROOT: jobsRoot,
+      GOOSE_MODE: "local",
+    },
+    async (baseUrl) => {
+      const failedResponse = await fetch(`${baseUrl}/api/homepage-generation-jobs/${failedJobId}`);
+      const failed = await failedResponse.json();
+      assert(failed.status === "failed", "failed api job must synthesize failed status");
+      assert(failed.customer.preview_available === false, "failed api job must not expose preview");
+      assert(
+        failed.debug.job_report_path === `${jobsRoot}/failed/${failedJobId}.json.job-report.json`,
+        "failed api job must expose failed job report path",
+      );
+      assert(failed.debug.validation_result.passed === false, "failed api job must expose validation failure");
+    },
+  );
 });
 
 runTest("async generation enqueue returns queued without building", () => {
@@ -479,6 +699,30 @@ runTest("async generation enqueue returns queued without building", () => {
   asyncQueueState.jobsRoot = jobsRoot;
   asyncQueueState.completedJobId = "JOB_ASYNC_QUEUED";
   asyncQueueState.completedCompanyId = companyId;
+});
+
+runTest("batch runner skips pending rename race and continues", () => {
+  const jobsRoot = path.join("harness", "tmp", "rename-race-jobs");
+  const skippedFile = "rename-race.json";
+
+  fs.rmSync(path.join(process.cwd(), jobsRoot), { force: true, recursive: true });
+  fs.mkdirSync(path.join(process.cwd(), jobsRoot, "pending"), { recursive: true });
+  fs.copyFileSync(
+    path.join(process.cwd(), "requests", "sample-company-intro.json"),
+    path.join(process.cwd(), jobsRoot, "pending", skippedFile),
+  );
+
+  run("npm", ["run", "jobs:run", "--", jobsRoot], {
+    env: {
+      ...process.env,
+      HOMEPAGE_TEST_REMOVE_PENDING_BEFORE_RENAME: skippedFile,
+    },
+  });
+
+  const report = readJson(path.join(jobsRoot, "batch-run-report.json"));
+  assert(report.summary.skipped === 1, "batch report must record skipped rename race");
+  assert(report.summary.failed === 0, "skipped rename race must not count as failed job");
+  assert(report.results[0].status === "skipped", "rename race result must be skipped");
 });
 
 runTest("async status helper synthesizes queued and running states", () => {
@@ -699,7 +943,7 @@ runTest("goose required without CLI records manual_required", () => {
 let failed = 0;
 for (const test of tests) {
   try {
-    test.fn();
+    await test.fn();
     console.log(`ok - ${test.name}`);
   } catch (error) {
     failed += 1;
@@ -761,6 +1005,53 @@ function hasGooseCli() {
   });
 
   return result.status === 0;
+}
+
+async function withNextDevServer(env, fn) {
+  const port = 32000 + Math.floor(Math.random() * 1000);
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const nextBin = path.join(process.cwd(), "node_modules", ".bin", "next");
+  const child = spawn(nextBin, ["dev", "frontend", "--hostname", "127.0.0.1", "--port", String(port)], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      ...env,
+      NEXT_TELEMETRY_DISABLED: "1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const output = [];
+  child.stdout.on("data", (chunk) => output.push(String(chunk)));
+  child.stderr.on("data", (chunk) => output.push(String(chunk)));
+
+  try {
+    await waitForHttpServer(baseUrl, output);
+    await fn(baseUrl);
+  } finally {
+    child.kill("SIGTERM");
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 3000);
+      child.once("exit", () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
+  }
+}
+
+async function waitForHttpServer(baseUrl, output) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 30_000) {
+    try {
+      const response = await fetch(`${baseUrl}/api/generated-sites`);
+      if (response.status < 500) return;
+    } catch {
+      // Server is still starting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Next dev server did not become ready:\n${output.join("").split("\n").slice(-40).join("\n")}`);
 }
 
 function buildAsyncRequest(requestId, companyId) {
